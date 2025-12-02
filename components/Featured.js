@@ -1,7 +1,7 @@
 "use client";
 import Center from "./Center";
 import styled from 'styled-components';
-import Button from "./Button";
+import ButtonLink from "./ButtonLink";
 
 const BG = styled.div`
     background-color: #f7f7f7;
@@ -48,29 +48,24 @@ const ImageWrapper = styled.div`
     }
 `;
 
-export default function Featured() {
-    return(
-        <BG>
-            <Center>
-                <ColumnsWrapper>
-                    <div>
-                        <Title>Dior Homme Intense</Title>
-                        <Description>
-                            Experience the iconic scent of Dior Homme Intense - 
-                            a sophisticated blend of iris, lavender, and pear. 
-                            Available in convenient decant sizes perfect for 
-                            trying before committing to a full bottle.
-                        </Description>
-                        <Button>View Product</Button>
-                    </div>
-                    <ImageWrapper>
-                        <img 
-                            src="https://scent-siphon-admin.s3.amazonaws.com/1764237386207.jpg" 
-                            alt="Dior Homme Intense Perfume" 
-                        />
-                    </ImageWrapper>
-                </ColumnsWrapper>
-            </Center>  
-        </BG>
-    );
+export default function Featured({ product }) {
+  return (
+    <BG>
+      <Center>
+        <ColumnsWrapper>
+          <div>
+            <Title>{product.title}</Title>
+            <Description>{product.description}</Description>
+            <ButtonLink href={'/products/' + product._id}>View Product</ButtonLink>
+          </div>
+          <ImageWrapper>
+            <img 
+              src={product.images?.[0]} 
+              alt={product.title} 
+            />
+          </ImageWrapper>
+        </ColumnsWrapper>
+      </Center>  
+    </BG>
+  );
 }
