@@ -14,7 +14,7 @@ export const buttonStyles = css`
   transition: all 0.2s;
   
   /* Default: White button */
-  ${props => !props.primary && !props.outline && css`
+  ${props => !props.$primary && !props.$outline && css`
     background-color: white;
     color: #222;
     
@@ -24,7 +24,7 @@ export const buttonStyles = css`
   `}
   
   /* Primary: Black button */
-  ${props => props.primary && css`
+  ${props => props.$primary && css`
     background-color: #222;
     color: white;
     
@@ -34,7 +34,7 @@ export const buttonStyles = css`
   `}
   
   /* Outline: Transparent with border */
-  ${props => props.outline && css`
+  ${props => props.$outline && css`
     background-color: transparent;
     color: white;
     border: 1px solid white;
@@ -45,7 +45,7 @@ export const buttonStyles = css`
   `}
   
   /* Size variants */
-  ${props => props.size === 'l' && css`
+  ${props => props.$size === 'l' && css`
     font-size: 17px;
     padding: 12px 28px;
   `}

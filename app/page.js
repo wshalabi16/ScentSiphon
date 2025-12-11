@@ -1,5 +1,6 @@
 import Header from "@/components/Header";
 import Featured from "@/components/Featured";
+import NewProducts from "@/components/NewProducts";
 import { mongooseConnect } from "@/lib/mongoose";
 import { Product } from "@/lib/models";
 
@@ -15,6 +16,11 @@ export default async function HomePage() {
     { $sample: { size: 1 } }
   ]);
   
+  // Latest 10 products
+  const newProducts = await Product.find()
+    .sort({ _id: -1 })  
+    .limit(8);
+  
   if (!heroProduct) {
     return (
       <div>
@@ -28,6 +34,7 @@ export default async function HomePage() {
     <div>
       <Header />
       <Featured product={JSON.parse(JSON.stringify(heroProduct))} />
+      <NewProducts products={JSON.parse(JSON.stringify(newProducts))} />
     </div>
   );
 }

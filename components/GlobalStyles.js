@@ -6,7 +6,7 @@ const GlobalStyles = createGlobalStyle`
     padding: 0;
     margin: 0;
     font-family: var(--font-inter), sans-serif;
-  }
+    background-color: #fdfcfb; 
 `;
 
 export default GlobalStyles;

@@ -4,7 +4,7 @@ import styled from 'styled-components';
 import ButtonLink from "./ButtonLink";
 
 const BG = styled.div`
-    background-color: #f7f7f7;
+    background-color: #faf9f7;  
     color: #333;
     padding: 80px 0;
 `;  
@@ -15,6 +15,7 @@ const Title = styled.h1`
     font-size: 3rem;
     margin: 0 0 10px 0;
     color: #1a1a1a;
+    letter-spacing: -0.5px; 
 `; 
 
 const Description = styled.p`
@@ -39,7 +40,8 @@ const ImageWrapper = styled.div`
     background-color: white;
     border-radius: 12px;
     padding: 30px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);  
+    border: 1px solid #f0f0f0;  
     
     img {
         max-width: 100%;
@@ -56,7 +58,7 @@ export default function Featured({ product }) {
           <div>
             <Title>{product.title}</Title>
             <Description>{product.description}</Description>
-            <ButtonLink href={'/products/' + product._id}>View Product</ButtonLink>
+            <ButtonLink href={'/products/' + product._id} primary>View Product</ButtonLink>
           </div>
           <ImageWrapper>
             <img 
