@@ -7,7 +7,6 @@ import Center from "@/components/Center";
 import styled from "styled-components";
 import Table from "@/components/Table";
 import axios from "axios";
-import Link from "next/link";
 
 const ColumnsWrapper = styled.div`
   display: grid;
@@ -99,6 +98,32 @@ const EmptyCart = styled.div`
   }
 `;
 
+const Input = styled.input`
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 12px;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-family: var(--font-inter), sans-serif;
+  transition: all 0.2s;
+  
+  &:focus {
+    outline: none;
+    border-color: #1a1a1a;
+  }
+`;
+
+const CityHolder = styled.div`
+  display: flex;
+  gap: 10px;
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 0;
+  }
+`;
+
 const CheckoutButton = styled.button`
   width: 100%;
   background-color: #1a1a1a;
@@ -115,11 +140,24 @@ const CheckoutButton = styled.button`
   &:hover {
     background-color: #000;
   }
+  
+  &:disabled {
+    background-color: #999;
+    cursor: not-allowed;
+  }
 `;
 
-export default function CartPage() {
-  const { cartProducts, addProduct, removeProduct } = useContext(CartContext);
+export default function CheckoutPage() {
+  const { cartProducts, addProduct, removeProduct, clearCart } = useContext(CartContext);
   const [products, setProducts] = useState([]);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [city, setCity] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+  const [streetAddress, setStreetAddress] = useState('');
+  const [country, setCountry] = useState('');
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (cartProducts.length > 0) {
@@ -132,6 +170,16 @@ export default function CartPage() {
     }
   }, [cartProducts]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    if (window?.location.href.includes('success')) {
+      setIsSuccess(true);
+      clearCart();
+    }
+  }, []);
+
   function moreOfThisProduct(id) {
     addProduct(id);
   }
@@ -140,10 +188,58 @@ export default function CartPage() {
     removeProduct(id);
   }
 
+  async function goToPayment() {
+    setIsLoading(true);
+    try {
+      const response = await axios.post('/api/checkout', {
+        name,
+        email,
+        city,
+        postalCode,
+        streetAddress,
+        country,
+        cartProducts,
+      });
+      
+      if (response.data.url) {
+        window.location = response.data.url;
+      }
+    } catch (error) {
+      console.error('Checkout error:', error);
+      alert('Something went wrong. Please try again.');
+      setIsLoading(false);
+    }
+  }
+
   let total = 0;
   for (const productId of cartProducts) {
     const price = products.find(p => p._id === productId)?.price || 0;
     total += price;
+  }
+
+  if (isSuccess) {
+    return (
+      <>
+        <Header />
+        <Center>
+          <ColumnsWrapper>
+            <Box>
+              <h2 style={{ 
+                fontFamily: 'var(--font-playfair), serif',
+                fontSize: '2rem',
+                marginTop: 0,
+                marginBottom: '10px',
+                color: '#1a1a1a'
+              }}>Thanks for your order!</h2>
+              <p style={{
+                fontFamily: 'var(--font-inter), sans-serif',
+                color: '#666'
+              }}>We will email you when your order will be sent.</p>
+            </Box>
+          </ColumnsWrapper>
+        </Center>
+      </>
+    );
   }
 
   return (
@@ -217,28 +313,56 @@ export default function CartPage() {
                 fontSize: '1.5rem',
                 marginTop: 0,
                 marginBottom: '20px'
-              }}>Order Summary</h2>
-              <div style={{
-                fontFamily: 'var(--font-inter), sans-serif',
-                fontSize: '1.2rem',
-                marginBottom: '20px',
-                paddingBottom: '20px',
-                borderBottom: '1px solid #f0f0f0'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                  <span>Subtotal:</span>
-                  <span style={{ fontWeight: '600' }}>${total} CAD</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: '#666' }}>
-                  <span>Shipping:</span>
-                  <span>Calculated at checkout</span>
-                </div>
-              </div>
-              <Link href="/checkout" style={{ textDecoration: 'none' }}>
-                <CheckoutButton>
-                  Proceed to Checkout
-                </CheckoutButton>
-              </Link>
+              }}>Order Information</h2>
+              
+              <Input
+                type="text"
+                placeholder="Name"
+                value={name}
+                onChange={ev => setName(ev.target.value)}
+              />
+              
+              <Input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={ev => setEmail(ev.target.value)}
+              />
+              
+              <CityHolder>
+                <Input
+                  type="text"
+                  placeholder="City"
+                  value={city}
+                  onChange={ev => setCity(ev.target.value)}
+                />
+                <Input
+                  type="text"
+                  placeholder="Postal Code"
+                  value={postalCode}
+                  onChange={ev => setPostalCode(ev.target.value)}
+                />
+              </CityHolder>
+              
+              <Input
+                type="text"
+                placeholder="Street Address"
+                value={streetAddress}
+                onChange={ev => setStreetAddress(ev.target.value)}
+              />
+              
+              <Input
+                type="text"
+                placeholder="Country"
+                value={country}
+                onChange={ev => setCountry(ev.target.value)}
+              />
+              
+              <CheckoutButton
+                onClick={goToPayment}
+                disabled={isLoading}>
+                {isLoading ? 'Processing...' : 'Continue to payment'}
+              </CheckoutButton>
             </Box>
           )}
         </ColumnsWrapper>
