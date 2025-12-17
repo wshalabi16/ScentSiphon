@@ -58,7 +58,7 @@ export default function Featured({ product }) {
           <div>
             <Title>{product.title}</Title>
             <Description>{product.description}</Description>
-            <ButtonLink href={'/products/' + product._id} primary>View Product</ButtonLink>
+            <ButtonLink href={'/product/' + product._id} primary>View Product</ButtonLink>
           </div>
           <ImageWrapper>
             <img 

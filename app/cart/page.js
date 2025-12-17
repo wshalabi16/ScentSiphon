@@ -4,30 +4,12 @@ import { useContext, useEffect, useState } from "react";
 import { CartContext } from "@/components/CartContext";
 import Header from "@/components/Header";
 import Center from "@/components/Center";
+import ColumnsWrapper from "@/components/ColumnsWrapper";
+import WhiteBox from "@/components/WhiteBox";
 import styled from "styled-components";
 import Table from "@/components/Table";
 import axios from "axios";
 import Link from "next/link";
-
-const ColumnsWrapper = styled.div`
-  display: grid;
-  grid-template-columns: 1.3fr 0.7fr;
-  gap: 40px;
-  margin-top: 40px;
-  margin-bottom: 40px;
-  
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const Box = styled.div`
-  background-color: white;
-  border-radius: 12px;
-  padding: 30px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-  border: 1px solid #f0f0f0;
-`;
 
 const ProductInfoCell = styled.td`
   padding: 16px 8px;
@@ -151,7 +133,7 @@ export default function CartPage() {
       <Header />
       <Center>
         <ColumnsWrapper>
-          <Box>
+          <WhiteBox>
             <h2 style={{ 
               fontFamily: 'var(--font-playfair), serif',
               fontSize: '2rem',
@@ -208,10 +190,10 @@ export default function CartPage() {
                 </tbody>
               </Table>
             )}
-          </Box>
+          </WhiteBox>
           
           {!!cartProducts?.length && (
-            <Box>
+            <WhiteBox>
               <h2 style={{ 
                 fontFamily: 'var(--font-playfair), serif',
                 fontSize: '1.5rem',
@@ -239,7 +221,7 @@ export default function CartPage() {
                   Proceed to Checkout
                 </CheckoutButton>
               </Link>
-            </Box>
+            </WhiteBox>
           )}
         </ColumnsWrapper>
       </Center>
