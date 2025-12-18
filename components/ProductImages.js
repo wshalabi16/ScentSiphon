@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import styled from "styled-components";
 
 const Image = styled.img`
@@ -6,12 +7,28 @@ const Image = styled.img`
   max-height: 100%;
 `;
 
+const BigImage = styled.img`
+  max-width: 100%;
+  max-height: 200px;
+`;
+
+const BigImageWrapper = styled.div`
+  text-align: center;
+`;
+
+const ImageButtons = styled.div`
+  display: flex;
+  gap: 10px;
+  flex-grow: 0;
+  margin-top: 10px;
+`;
+
 const ImageButton = styled.div`
-  border: 1px solid #f0f0f0;
-  height: 80px;
-  padding: 8px;
+  border: 2px solid ${props => props.$active ? '#ccc' : 'transparent'};
+  height: 40px;
+  padding: 2px;
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: 5px;
   transition: all 0.2s;
   
   img {
@@ -21,28 +38,29 @@ const ImageButton = styled.div`
   }
   
   &:hover {
-    border-color: #1a1a1a;
+    border-color: #ccc;
   }
 `;
 
-const ImagesGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-  gap: 10px;
-  margin-top: 10px;
-`;
-
-export default function ProductImages({images}){
-  return(
+export default function ProductImages({images}) {
+  const [activeImage, setActiveImage] = useState(images?.[0]);
+  
+  return (
     <>
-      <Image src={images?.[0]} alt="Product" />
-      <ImagesGrid>
-        {images?.map((image, index) => (
-          <ImageButton key={index}>
-            <img src={image} alt={`Product view ${index + 1}`} />
+      <BigImageWrapper>
+        <BigImage src={activeImage} />
+      </BigImageWrapper>
+      <ImageButtons>
+        {images?.map(image => (
+          <ImageButton 
+            key={image} 
+            $active={image === activeImage}
+            onClick={() => setActiveImage(image)}
+          >
+            <Image src={image} alt=""/>
           </ImageButton>
         ))}
-      </ImagesGrid>
+      </ImageButtons>
     </>
   );
 }

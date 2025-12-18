@@ -19,15 +19,41 @@ export function CartContextProvider({ children }) {
     }
   }, [ls]);
 
-  function addProduct(productId) {
-    setCartProducts(prev => [...prev, productId]);
+  // Add product with variant info: { productId, variantId, size, price }
+  function addProduct(productId, variant = null) {
+    if (variant) {
+      // Adding with variant (new system)
+      setCartProducts(prev => [...prev, { 
+        productId, 
+        variantId: variant._id || variant.size, // Use size as ID if no _id
+        size: variant.size,
+        price: variant.price
+      }]);
+    } else {
+      // Backward compatibility - adding without variant (old system)
+      setCartProducts(prev => [...prev, productId]);
+    }
   }
 
-  function removeProduct(productId) {
+  // Remove one instance of product with matching variant
+  function removeProduct(productId, variantId = null) {
     setCartProducts(prev => {
-      const pos = prev.indexOf(productId);
-      if (pos !== -1) {
-        return prev.filter((value, index) => index !== pos);
+      if (variantId) {
+        // Remove by productId + variantId
+        const pos = prev.findIndex(item => 
+          (typeof item === 'object' ? item.productId === productId && item.variantId === variantId : false)
+        );
+        if (pos !== -1) {
+          return prev.filter((value, index) => index !== pos);
+        }
+      } else {
+        // Old system - remove by productId only
+        const pos = prev.findIndex(item => 
+          typeof item === 'string' ? item === productId : item.productId === productId
+        );
+        if (pos !== -1) {
+          return prev.filter((value, index) => index !== pos);
+        }
       }
       return prev;
     });
@@ -35,6 +61,7 @@ export function CartContextProvider({ children }) {
 
   function clearCart() {
     setCartProducts([]);
+    ls?.removeItem('cart');
   }
 
   return (

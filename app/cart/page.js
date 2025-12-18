@@ -26,12 +26,29 @@ const ProductImageBox = styled.div`
   justify-content: center;
   border-radius: 8px;
   background-color: #fafafa;
+  cursor: pointer;
+  transition: all 0.2s;
   
   img {
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
   }
+  
+  &:hover {
+    border-color: #1a1a1a;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+`;
+
+const ProductTitle = styled.div`
+  font-weight: 500;
+  margin-bottom: 4px;
+`;
+
+const VariantInfo = styled.div`
+  font-size: 0.85rem;
+  color: #666;
 `;
 
 const QuantityLabel = styled.span`
@@ -105,7 +122,12 @@ export default function CartPage() {
 
   useEffect(() => {
     if (cartProducts.length > 0) {
-      axios.post('/api/cart', { ids: cartProducts })
+      // Extract unique product IDs (handle both old and new cart format)
+      const productIds = [...new Set(cartProducts.map(item => 
+        typeof item === 'string' ? item : item.productId
+      ))];
+      
+      axios.post('/api/cart', { ids: productIds })
         .then(response => {
           setProducts(response.data);
         });
@@ -114,19 +136,72 @@ export default function CartPage() {
     }
   }, [cartProducts]);
 
-  function moreOfThisProduct(id) {
-    addProduct(id);
+  function moreOfThisProduct(productId, variantId = null) {
+    if (variantId) {
+      // Find the variant info from cart
+      const cartItem = cartProducts.find(item => 
+        typeof item === 'object' && item.productId === productId && item.variantId === variantId
+      );
+      if (cartItem) {
+        addProduct(productId, { size: cartItem.size, price: cartItem.price, _id: variantId });
+      }
+    } else {
+      addProduct(productId);
+    }
   }
 
-  function lessOfThisProduct(id) {
-    removeProduct(id);
+  function lessOfThisProduct(productId, variantId = null) {
+    removeProduct(productId, variantId);
   }
+
+  // Helper function to format size display
+  function formatSize(size) {
+    if (!size) return '';
+    // If size already has "ml", return as is
+    if (typeof size === 'string' && size.toLowerCase().includes('ml')) {
+      return size;
+    }
+    // Otherwise add "ml"
+    return `${size} ml`;
+  }
+
+  // Group cart items by productId + variantId
+  const groupedCart = {};
+  cartProducts.forEach(item => {
+    if (typeof item === 'string') {
+      // Old system - just product ID
+      const key = item;
+      if (!groupedCart[key]) {
+        groupedCart[key] = { productId: item, variantId: null, quantity: 0, price: 0 };
+      }
+      groupedCart[key].quantity++;
+    } else {
+      // New system - with variant
+      const key = `${item.productId}-${item.variantId}`;
+      if (!groupedCart[key]) {
+        groupedCart[key] = { 
+          productId: item.productId, 
+          variantId: item.variantId,
+          size: item.size,
+          price: item.price,
+          quantity: 0 
+        };
+      }
+      groupedCart[key].quantity++;
+    }
+  });
 
   let total = 0;
-  for (const productId of cartProducts) {
-    const price = products.find(p => p._id === productId)?.price || 0;
-    total += price;
-  }
+  Object.values(groupedCart).forEach(item => {
+    if (item.variantId) {
+      // New system - use price from cart item
+      total += item.quantity * item.price;
+    } else {
+      // Old system - use price from product
+      const product = products.find(p => p._id === item.productId);
+      total += item.quantity * (product?.price || 0);
+    }
+  });
 
   return (
     <>
@@ -148,7 +223,7 @@ export default function CartPage() {
               </EmptyCart>
             )}
             
-            {products?.length > 0 && (
+            {Object.keys(groupedCart).length > 0 && (
               <Table>
                 <thead>
                   <tr>
@@ -158,34 +233,48 @@ export default function CartPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {products.map(product => (
-                    <tr key={product._id}>
-                      <ProductInfoCell>
-                        <ProductImageBox>
-                          <img src={product.images[0]} alt={product.title} />
-                        </ProductImageBox>
-                        {product.title}
-                      </ProductInfoCell>
-                      <td>
-                        <QuantityButton onClick={() => lessOfThisProduct(product._id)}>
-                          -
-                        </QuantityButton>
-                        <QuantityLabel>
-                          {cartProducts.filter(id => id === product._id).length}
-                        </QuantityLabel>
-                        <QuantityButton onClick={() => moreOfThisProduct(product._id)}>
-                          +
-                        </QuantityButton>
-                      </td>
-                      <td>
-                        ${cartProducts.filter(id => id === product._id).length * product.price}
-                      </td>
-                    </tr>
-                  ))}
+                  {Object.entries(groupedCart).map(([key, item]) => {
+                    const product = products.find(p => p._id === item.productId);
+                    if (!product) return null;
+                    
+                    const itemPrice = item.variantId ? item.price : product.price;
+                    
+                    return (
+                      <tr key={key}>
+                        <ProductInfoCell>
+                          <Link href={`/product/${item.productId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                            <ProductImageBox>
+                              <img src={product.images[0]} alt={product.title} />
+                            </ProductImageBox>
+                          </Link>
+                          <div>
+                            <ProductTitle>{product.title}</ProductTitle>
+                            {item.size && (
+                              <VariantInfo>Size: {formatSize(item.size)}</VariantInfo>
+                            )}
+                          </div>
+                        </ProductInfoCell>
+                        <td>
+                          <QuantityButton onClick={() => lessOfThisProduct(item.productId, item.variantId)}>
+                            -
+                          </QuantityButton>
+                          <QuantityLabel>
+                            {item.quantity}
+                          </QuantityLabel>
+                          <QuantityButton onClick={() => moreOfThisProduct(item.productId, item.variantId)}>
+                            +
+                          </QuantityButton>
+                        </td>
+                        <td>
+                          ${(item.quantity * itemPrice).toFixed(2)}
+                        </td>
+                      </tr>
+                    );
+                  })}
                   <TotalRow>
                     <td></td>
                     <td></td>
-                    <td>${total} CAD</td>
+                    <td>${total.toFixed(2)} CAD</td>
                   </TotalRow>
                 </tbody>
               </Table>
@@ -209,7 +298,7 @@ export default function CartPage() {
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
                   <span>Subtotal:</span>
-                  <span style={{ fontWeight: '600' }}>${total} CAD</span>
+                  <span style={{ fontWeight: '600' }}>${total.toFixed(2)} CAD</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: '#666' }}>
                   <span>Shipping:</span>

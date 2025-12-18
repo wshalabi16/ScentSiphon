@@ -12,15 +12,18 @@ export async function POST(req) {
       name,
       email,
       city,
+      province,
       postalCode,
       streetAddress,
+      addressLine2,
       country,
+      phone,
       cartProducts,
     } = await req.json();
 
-    if (!name || !email || !city || !postalCode || !streetAddress || !country) {
+    if (!name || !email || !city || !province || !postalCode || !streetAddress || !country) {
       return NextResponse.json(
-        { error: 'All fields are required' },
+        { error: 'All required fields must be filled' },
         { status: 400 }
       );
     }
@@ -32,45 +35,93 @@ export async function POST(req) {
       );
     }
 
-    const productsIds = cartProducts;
-    const uniqueIds = [...new Set(productsIds)];
-    const productsInfos = await Product.find({ _id: uniqueIds });
+    // Extract unique product IDs (handle both old and new cart format)
+    const productIds = [...new Set(cartProducts.map(item => 
+      typeof item === 'string' ? item : item.productId
+    ))];
+    
+    const productsInfos = await Product.find({ _id: productIds });
 
-    let line_items = [];
-    for (const productId of uniqueIds) {
-      const productInfo = productsInfos.find(p => p._id.toString() === productId);
-      const quantity = productsIds.filter(id => id === productId)?.length || 0;
-      
-      if (quantity > 0 && productInfo) {
-        line_items.push({
-          quantity,
-          price_data: {
-            currency: 'CAD',
-            product_data: { name: productInfo.title },
-            unit_amount: Math.round(productInfo.price * 100), 
-          },
-        });
+    // Group cart items by productId + variant
+    const groupedCart = {};
+    cartProducts.forEach(item => {
+      if (typeof item === 'string') {
+        // Old system - just product ID
+        const key = item;
+        if (!groupedCart[key]) {
+          groupedCart[key] = { 
+            productId: item, 
+            variantId: null, 
+            quantity: 0,
+            price: null 
+          };
+        }
+        groupedCart[key].quantity++;
+      } else {
+        // New system - with variant
+        const key = `${item.productId}-${item.variantId}`;
+        if (!groupedCart[key]) {
+          groupedCart[key] = { 
+            productId: item.productId, 
+            variantId: item.variantId,
+            size: item.size,
+            price: item.price,
+            quantity: 0 
+          };
+        }
+        groupedCart[key].quantity++;
       }
+    });
+
+    // Build line items for Stripe
+    let line_items = [];
+    for (const [key, item] of Object.entries(groupedCart)) {
+      const productInfo = productsInfos.find(p => p._id.toString() === item.productId);
+      
+      if (!productInfo) continue;
+
+      const itemPrice = item.variantId ? item.price : productInfo.price;
+      const productName = item.size 
+        ? `${productInfo.title} (${item.size})`
+        : productInfo.title;
+      
+      line_items.push({
+        quantity: item.quantity,
+        price_data: {
+          currency: 'CAD',
+          product_data: { name: productName },
+          unit_amount: Math.round(itemPrice * 100), // Convert CAD to cents
+        },
+      });
     }
 
+    // Create full address string
+    const fullAddress = addressLine2 
+      ? `${streetAddress}, ${addressLine2}`
+      : streetAddress;
+
+    // Create order document
     const orderDoc = await Order.create({
       line_items,
       name,
       email,
       city,
+      province,
       postalCode,
-      streetAddress,
+      streetAddress: fullAddress,
       country,
+      phone: phone || '',
       paid: false,
       currency: 'CAD',
     });
 
+    // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
       line_items,
       mode: 'payment',
       customer_email: email,
-      success_url: process.env.PUBLIC_URL + '/cart?success=1',
-      cancel_url: process.env.PUBLIC_URL + '/cart?canceled=1',
+      success_url: process.env.PUBLIC_URL + '/checkout?success=1',
+      cancel_url: process.env.PUBLIC_URL + '/checkout?canceled=1',
       metadata: { orderId: orderDoc._id.toString() },
     });
 
@@ -78,7 +129,7 @@ export async function POST(req) {
   } catch (error) {
     console.error('Checkout error:', error);
     return NextResponse.json(
-      { error: 'Failed to create checkout session' },
+      { error: 'Failed to create checkout session', details: error.message },
       { status: 500 }
     );
   }
