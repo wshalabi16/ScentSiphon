@@ -35,62 +35,41 @@ export async function POST(req) {
       );
     }
 
-    // Extract unique product IDs (handle both old and new cart format)
-    const productIds = [...new Set(cartProducts.map(item => 
-      typeof item === 'string' ? item : item.productId
-    ))];
-    
+    const productIds = [...new Set(cartProducts.map(item => item.productId))];
+
     const productsInfos = await Product.find({ _id: productIds });
 
     // Group cart items by productId + variant
     const groupedCart = {};
     cartProducts.forEach(item => {
-      if (typeof item === 'string') {
-        // Old system - just product ID
-        const key = item;
-        if (!groupedCart[key]) {
-          groupedCart[key] = { 
-            productId: item, 
-            variantId: null, 
-            quantity: 0,
-            price: null 
-          };
-        }
-        groupedCart[key].quantity++;
-      } else {
-        // New system - with variant
-        const key = `${item.productId}-${item.variantId}`;
-        if (!groupedCart[key]) {
-          groupedCart[key] = { 
-            productId: item.productId, 
-            variantId: item.variantId,
-            size: item.size,
-            price: item.price,
-            quantity: 0 
-          };
-        }
-        groupedCart[key].quantity++;
+      const key = `${item.productId}-${item.variantId}`;
+      if (!groupedCart[key]) {
+        groupedCart[key] = {
+          productId: item.productId,
+          variantId: item.variantId,
+          size: item.size,
+          price: item.price,
+          quantity: 0
+        };
       }
+      groupedCart[key].quantity++;
     });
 
     // Build line items for Stripe
     let line_items = [];
     for (const [key, item] of Object.entries(groupedCart)) {
       const productInfo = productsInfos.find(p => p._id.toString() === item.productId);
-      
+
       if (!productInfo) continue;
 
-      const itemPrice = item.variantId ? item.price : productInfo.price;
-      const productName = item.size 
-        ? `${productInfo.title} (${item.size})`
-        : productInfo.title;
-      
+      const productName = `${productInfo.title} (${item.size})`;
+
       line_items.push({
         quantity: item.quantity,
         price_data: {
           currency: 'CAD',
           product_data: { name: productName },
-          unit_amount: Math.round(itemPrice * 100), // Convert CAD to cents
+          unit_amount: Math.round(item.price * 100), // Convert CAD to cents
         },
       });
     }

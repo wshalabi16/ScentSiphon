@@ -122,11 +122,8 @@ export default function CartPage() {
 
   useEffect(() => {
     if (cartProducts.length > 0) {
-      // Extract unique product IDs (handle both old and new cart format)
-      const productIds = [...new Set(cartProducts.map(item => 
-        typeof item === 'string' ? item : item.productId
-      ))];
-      
+      const productIds = [...new Set(cartProducts.map(item => item.productId))];
+
       axios.post('/api/cart', { ids: productIds })
         .then(response => {
           setProducts(response.data);
@@ -136,21 +133,16 @@ export default function CartPage() {
     }
   }, [cartProducts]);
 
-  function moreOfThisProduct(productId, variantId = null) {
-    if (variantId) {
-      // Find the variant info from cart
-      const cartItem = cartProducts.find(item => 
-        typeof item === 'object' && item.productId === productId && item.variantId === variantId
-      );
-      if (cartItem) {
-        addProduct(productId, { size: cartItem.size, price: cartItem.price, _id: variantId });
-      }
-    } else {
-      addProduct(productId);
+  function moreOfThisProduct(productId, variantId) {
+    const cartItem = cartProducts.find(item =>
+      item.productId === productId && item.variantId === variantId
+    );
+    if (cartItem) {
+      addProduct(productId, { size: cartItem.size, price: cartItem.price, _id: variantId });
     }
   }
 
-  function lessOfThisProduct(productId, variantId = null) {
+  function lessOfThisProduct(productId, variantId) {
     removeProduct(productId, variantId);
   }
 
@@ -168,39 +160,22 @@ export default function CartPage() {
   // Group cart items by productId + variantId
   const groupedCart = {};
   cartProducts.forEach(item => {
-    if (typeof item === 'string') {
-      // Old system - just product ID
-      const key = item;
-      if (!groupedCart[key]) {
-        groupedCart[key] = { productId: item, variantId: null, quantity: 0, price: 0 };
-      }
-      groupedCart[key].quantity++;
-    } else {
-      // New system - with variant
-      const key = `${item.productId}-${item.variantId}`;
-      if (!groupedCart[key]) {
-        groupedCart[key] = { 
-          productId: item.productId, 
-          variantId: item.variantId,
-          size: item.size,
-          price: item.price,
-          quantity: 0 
-        };
-      }
-      groupedCart[key].quantity++;
+    const key = `${item.productId}-${item.variantId}`;
+    if (!groupedCart[key]) {
+      groupedCart[key] = {
+        productId: item.productId,
+        variantId: item.variantId,
+        size: item.size,
+        price: item.price,
+        quantity: 0
+      };
     }
+    groupedCart[key].quantity++;
   });
 
   let total = 0;
   Object.values(groupedCart).forEach(item => {
-    if (item.variantId) {
-      // New system - use price from cart item
-      total += item.quantity * item.price;
-    } else {
-      // Old system - use price from product
-      const product = products.find(p => p._id === item.productId);
-      total += item.quantity * (product?.price || 0);
-    }
+    total += item.quantity * item.price;
   });
 
   return (
@@ -236,9 +211,7 @@ export default function CartPage() {
                   {Object.entries(groupedCart).map(([key, item]) => {
                     const product = products.find(p => p._id === item.productId);
                     if (!product) return null;
-                    
-                    const itemPrice = item.variantId ? item.price : product.price;
-                    
+
                     return (
                       <tr key={key}>
                         <ProductInfoCell>
@@ -266,7 +239,7 @@ export default function CartPage() {
                           </QuantityButton>
                         </td>
                         <td>
-                          ${(item.quantity * itemPrice).toFixed(2)}
+                          ${(item.quantity * item.price).toFixed(2)}
                         </td>
                       </tr>
                     );

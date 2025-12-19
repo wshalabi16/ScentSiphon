@@ -20,40 +20,23 @@ export function CartContextProvider({ children }) {
   }, [ls]);
 
   // Add product with variant info: { productId, variantId, size, price }
-  function addProduct(productId, variant = null) {
-    if (variant) {
-      // Adding with variant (new system)
-      setCartProducts(prev => [...prev, { 
-        productId, 
-        variantId: variant._id || variant.size, // Use size as ID if no _id
-        size: variant.size,
-        price: variant.price
-      }]);
-    } else {
-      // Backward compatibility - adding without variant (old system)
-      setCartProducts(prev => [...prev, productId]);
-    }
+  function addProduct(productId, variant) {
+    setCartProducts(prev => [...prev, {
+      productId,
+      variantId: variant._id || variant.size, // Use size as ID if no _id
+      size: variant.size,
+      price: variant.price
+    }]);
   }
 
   // Remove one instance of product with matching variant
-  function removeProduct(productId, variantId = null) {
+  function removeProduct(productId, variantId) {
     setCartProducts(prev => {
-      if (variantId) {
-        // Remove by productId + variantId
-        const pos = prev.findIndex(item => 
-          (typeof item === 'object' ? item.productId === productId && item.variantId === variantId : false)
-        );
-        if (pos !== -1) {
-          return prev.filter((value, index) => index !== pos);
-        }
-      } else {
-        // Old system - remove by productId only
-        const pos = prev.findIndex(item => 
-          typeof item === 'string' ? item === productId : item.productId === productId
-        );
-        if (pos !== -1) {
-          return prev.filter((value, index) => index !== pos);
-        }
+      const pos = prev.findIndex(item =>
+        item.productId === productId && item.variantId === variantId
+      );
+      if (pos !== -1) {
+        return prev.filter((_, index) => index !== pos);
       }
       return prev;
     });

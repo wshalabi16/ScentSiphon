@@ -52,10 +52,8 @@ export default function Header() {
         <Wrapper>
           <Logo href="/">Scent Siphon</Logo>
           <Nav>
-            <Link href="/">Home</Link>
-            <Link href="/categories">Categories</Link>
+            {/* <Link href="/categories">Categories</Link> */}
             <Link href="/products">All Products</Link>
-            <Link href="/account">Account</Link>
             <Link href="/cart">Cart ({cartProducts.length})</Link>  
           </Nav>
         </Wrapper>
