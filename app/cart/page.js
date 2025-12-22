@@ -41,6 +41,20 @@ const ProductImageBox = styled.div`
   }
 `;
 
+const ProductDetails = styled.div`
+  margin-left: 12px;
+`;
+
+const BrandName = styled.div`
+  font-family: var(--font-inter), sans-serif;
+  font-weight: 400;
+  font-size: 0.8rem;
+  color: #666;
+  margin-bottom: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
 const ProductTitle = styled.div`
   font-weight: 500;
   margin-bottom: 4px;
@@ -89,12 +103,96 @@ const EmptyCart = styled.div`
   padding: 60px 20px;
   color: #666;
   font-family: var(--font-inter), sans-serif;
-  
+
   h2 {
     font-family: var(--font-playfair), serif;
     font-size: 2rem;
     margin-bottom: 10px;
     color: #1a1a1a;
+
+    @media (max-width: 768px) {
+      font-size: 1.5rem;
+    }
+  }
+`;
+
+const MobileCartItem = styled.div`
+  display: none;
+
+  @media (max-width: 768px) {
+    display: block;
+    background: white;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 12px;
+    border: 1px solid #f0f0f0;
+  }
+`;
+
+const MobileProductInfo = styled.div`
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+`;
+
+const MobileProductDetails = styled.div`
+  flex: 1;
+`;
+
+const MobileActions = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+`;
+
+const MobilePrice = styled.div`
+  font-weight: 600;
+  font-size: 1.1rem;
+`;
+
+const MobileTotalSection = styled.div`
+  display: none;
+
+  @media (max-width: 768px) {
+    display: block;
+    background: white;
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 20px;
+    border: 1px solid #f0f0f0;
+    font-family: var(--font-inter), sans-serif;
+  }
+`;
+
+const MobileTotalRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  font-weight: 600;
+  font-size: 1.2rem;
+`;
+
+const TableWrapper = styled.div`
+  @media (max-width: 768px) {
+    display: none;
+  }
+`;
+
+const CartTitle = styled.h2`
+  font-family: var(--font-playfair), serif;
+  font-size: 2rem;
+  margin-top: 0;
+  margin-bottom: 20px;
+
+  @media (max-width: 768px) {
+    font-size: 1.8rem;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 1.5rem;
   }
 `;
 
@@ -146,18 +244,14 @@ export default function CartPage() {
     removeProduct(productId, variantId);
   }
 
-  // Helper function to format size display
   function formatSize(size) {
     if (!size) return '';
-    // If size already has "ml", return as is
     if (typeof size === 'string' && size.toLowerCase().includes('ml')) {
       return size;
     }
-    // Otherwise add "ml"
     return `${size} ml`;
   }
 
-  // Group cart items by productId + variantId
   const groupedCart = {};
   cartProducts.forEach(item => {
     const key = `${item.productId}-${item.variantId}`;
@@ -173,8 +267,36 @@ export default function CartPage() {
     groupedCart[key].quantity++;
   });
 
+  // Sort grouped cart entries by: brand → product title → size
+  const sortedGroupedCart = Object.entries(groupedCart).sort(([keyA, itemA], [keyB, itemB]) => {
+    const productA = products.find(p => p._id === itemA.productId);
+    const productB = products.find(p => p._id === itemB.productId);
+
+    if (!productA || !productB) return 0;
+
+    const brandA = productA.category?.name || '';
+    const brandB = productB.category?.name || '';
+    const titleA = productA.title || '';
+    const titleB = productB.title || '';
+
+    // Sort by brand first
+    if (brandA !== brandB) {
+      return brandA.localeCompare(brandB);
+    }
+
+    // Then by product title
+    if (titleA !== titleB) {
+      return titleA.localeCompare(titleB);
+    }
+
+    // Finally by size (numeric comparison)
+    const sizeA = parseFloat(itemA.size) || 0;
+    const sizeB = parseFloat(itemB.size) || 0;
+    return sizeA - sizeB;
+  });
+
   let total = 0;
-  Object.values(groupedCart).forEach(item => {
+  sortedGroupedCart.forEach(([, item]) => {
     total += item.quantity * item.price;
   });
 
@@ -184,50 +306,103 @@ export default function CartPage() {
       <Center>
         <ColumnsWrapper>
           <WhiteBox>
-            <h2 style={{ 
-              fontFamily: 'var(--font-playfair), serif',
-              fontSize: '2rem',
-              marginTop: 0,
-              marginBottom: '20px'
-            }}>Cart</h2>
-            
+            <CartTitle>Cart</CartTitle>
+
             {!cartProducts?.length && (
               <EmptyCart>
                 <h2>Your cart is empty</h2>
                 <p>Add some products to get started</p>
               </EmptyCart>
             )}
-            
-            {Object.keys(groupedCart).length > 0 && (
-              <Table>
-                <thead>
-                  <tr>
-                    <th>Product</th>
-                    <th>Quantity</th>
-                    <th>Price</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(groupedCart).map(([key, item]) => {
-                    const product = products.find(p => p._id === item.productId);
-                    if (!product) return null;
 
-                    return (
-                      <tr key={key}>
-                        <ProductInfoCell>
-                          <Link href={`/product/${item.productId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                            <ProductImageBox>
-                              <img src={product.images[0]} alt={product.title} />
-                            </ProductImageBox>
-                          </Link>
-                          <div>
-                            <ProductTitle>{product.title}</ProductTitle>
-                            {item.size && (
-                              <VariantInfo>Size: {formatSize(item.size)}</VariantInfo>
-                            )}
-                          </div>
-                        </ProductInfoCell>
-                        <td>
+            {sortedGroupedCart.length > 0 && (
+              <>
+                <TableWrapper>
+                  <Table>
+                    <thead>
+                      <tr>
+                        <th>Product</th>
+                        <th>Quantity</th>
+                        <th>Price</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedGroupedCart.map(([key, item]) => {
+                        const product = products.find(p => p._id === item.productId);
+                        if (!product) return null;
+                        const brandName = product.category?.name || '';
+                        const productTitle = product.title || '';
+                        const fullName = brandName ? `${brandName} ${productTitle}` : productTitle;
+
+                        return (
+                          <tr key={key}>
+                            <ProductInfoCell>
+                              <div style={{ display: 'flex', alignItems: 'center' }}>
+                                <Link href={`/product/${item.productId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                                  <ProductImageBox>
+                                    <img src={product.images[0]} alt={fullName} />
+                                  </ProductImageBox>
+                                </Link>
+                                <ProductDetails>
+                                  {brandName && <BrandName>{brandName}</BrandName>}
+                                  <ProductTitle>{productTitle}</ProductTitle>
+                                  {item.size && (
+                                    <VariantInfo>Size: {formatSize(item.size)}</VariantInfo>
+                                  )}
+                                </ProductDetails>
+                              </div>
+                            </ProductInfoCell>
+                            <td>
+                              <QuantityButton onClick={() => lessOfThisProduct(item.productId, item.variantId)}>
+                                -
+                              </QuantityButton>
+                              <QuantityLabel>
+                                {item.quantity}
+                              </QuantityLabel>
+                              <QuantityButton onClick={() => moreOfThisProduct(item.productId, item.variantId)}>
+                                +
+                              </QuantityButton>
+                            </td>
+                            <td>
+                              ${(item.quantity * item.price).toFixed(2)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      <TotalRow>
+                        <td></td>
+                        <td></td>
+                        <td>${total.toFixed(2)} CAD</td>
+                      </TotalRow>
+                    </tbody>
+                  </Table>
+                </TableWrapper>
+
+                {sortedGroupedCart.map(([key, item]) => {
+                  const product = products.find(p => p._id === item.productId);
+                  if (!product) return null;
+                  const brandName = product.category?.name || '';
+                  const productTitle = product.title || '';
+                  const fullName = brandName ? `${brandName} ${productTitle}` : productTitle;
+
+                  return (
+                    <MobileCartItem key={key}>
+                      <MobileProductInfo>
+                        <Link href={`/product/${item.productId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                          <ProductImageBox>
+                            <img src={product.images[0]} alt={fullName} />
+                          </ProductImageBox>
+                        </Link>
+                        <MobileProductDetails>
+                          {brandName && <BrandName>{brandName}</BrandName>}
+                          <ProductTitle>{productTitle}</ProductTitle>
+                          {item.size && (
+                            <VariantInfo>Size: {formatSize(item.size)}</VariantInfo>
+                          )}
+                        </MobileProductDetails>
+                      </MobileProductInfo>
+                      <MobileActions>
+                        <div>
                           <QuantityButton onClick={() => lessOfThisProduct(item.productId, item.variantId)}>
                             -
                           </QuantityButton>
@@ -237,20 +412,22 @@ export default function CartPage() {
                           <QuantityButton onClick={() => moreOfThisProduct(item.productId, item.variantId)}>
                             +
                           </QuantityButton>
-                        </td>
-                        <td>
+                        </div>
+                        <MobilePrice>
                           ${(item.quantity * item.price).toFixed(2)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  <TotalRow>
-                    <td></td>
-                    <td></td>
-                    <td>${total.toFixed(2)} CAD</td>
-                  </TotalRow>
-                </tbody>
-              </Table>
+                        </MobilePrice>
+                      </MobileActions>
+                    </MobileCartItem>
+                  );
+                })}
+
+                <MobileTotalSection>
+                  <MobileTotalRow>
+                    <span>Total:</span>
+                    <span>${total.toFixed(2)} CAD</span>
+                  </MobileTotalRow>
+                </MobileTotalSection>
+              </>
             )}
           </WhiteBox>
           

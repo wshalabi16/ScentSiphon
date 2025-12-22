@@ -7,10 +7,16 @@ export async function POST(req) {
   
   try {
     const { ids } = await req.json();
-    const products = await Product.find({ _id: { $in: ids } });
+    
+    const products = await Product.find({ _id: { $in: ids } })
+      .populate('category');
+    
     return NextResponse.json(products);
   } catch (error) {
     console.error('Cart API error:', error);
-    return NextResponse.json({ error: 'Failed to fetch cart products' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to fetch cart products' },
+      { status: 500 }
+    );
   }
 }

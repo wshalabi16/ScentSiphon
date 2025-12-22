@@ -89,6 +89,16 @@ const ItemInfo = styled.div`
   flex: 1;
 `;
 
+const BrandName = styled.div`
+  font-family: var(--font-inter), sans-serif;
+  font-weight: 400;
+  font-size: 0.8rem;
+  color: #666;
+  margin-bottom: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
 const ItemName = styled.div`
   font-weight: 500;
   color: #1a1a1a;
@@ -217,6 +227,50 @@ const InfoValue = styled.div`
   font-size: 1rem;
   color: #1a1a1a;
   font-weight: 500;
+`;
+
+const Title = styled.h1`
+  font-family: var(--font-playfair), serif;
+  font-size: 2.5rem;
+  margin-bottom: 30px;
+  color: #1a1a1a;
+
+  @media (max-width: 768px) {
+    font-size: 1.8rem;
+    margin-bottom: 20px;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 1.5rem;
+    margin-bottom: 16px;
+  }
+`;
+
+const SectionTitle = styled.h2`
+  font-family: var(--font-playfair), serif;
+  font-size: 1.5rem;
+  margin-top: 0;
+  margin-bottom: 20px;
+
+  @media (max-width: 768px) {
+    font-size: 1.2rem;
+    margin-bottom: 16px;
+  }
+`;
+
+const SuccessTitle = styled.h2`
+  font-family: var(--font-playfair), serif;
+  font-size: 2.5rem;
+  margin: 0 0 20px 0;
+  color: #1a1a1a;
+
+  @media (max-width: 768px) {
+    font-size: 1.8rem;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 1.5rem;
+  }
 `;
 
 const CANADIAN_PROVINCES = [
@@ -391,13 +445,7 @@ export default function CheckoutPage() {
         <Center>
           <PageWrapper>
             <SuccessBox>
-              <h2 style={{ 
-                fontFamily: 'var(--font-playfair), serif',
-                fontSize: '2.5rem',
-                marginTop: 0,
-                marginBottom: '10px',
-                color: '#1a1a1a'
-              }}>Thank you!</h2>
+              <SuccessTitle>Thank you!</SuccessTitle>
               <p style={{
                 fontFamily: 'var(--font-inter), sans-serif',
                 color: '#666',
@@ -413,17 +461,23 @@ export default function CheckoutPage() {
                   color: '#1a1a1a'
                 }}>Order Summary</h3>
                 
-                {orderData.items.map((item, index) => (
-                  <ItemRow key={index}>
-                    <ItemInfo>
-                      <ItemName>
-                        {item.product.title} {item.size && `(${formatSize(item.size)})`}
-                      </ItemName>
-                      <ItemSize>Quantity: {item.quantity}</ItemSize>
-                    </ItemInfo>
-                    <ItemPrice>${(item.quantity * item.price).toFixed(2)}</ItemPrice>
-                  </ItemRow>
-                ))}
+                {orderData.items.map((item, index) => {
+                  const brandName = item.product.category?.name || '';
+                  const productTitle = item.product.title || '';
+                  
+                  return (
+                    <ItemRow key={index}>
+                      <ItemInfo>
+                        {brandName && <BrandName>{brandName}</BrandName>}
+                        <ItemName>
+                          {productTitle} {item.size && `(${formatSize(item.size)})`}
+                        </ItemName>
+                        <ItemSize>Quantity: {item.quantity}</ItemSize>
+                      </ItemInfo>
+                      <ItemPrice>${(item.quantity * item.price).toFixed(2)}</ItemPrice>
+                    </ItemRow>
+                  );
+                })}
                 
                 <ItemRow style={{ 
                   marginTop: '20px', 
@@ -477,12 +531,7 @@ export default function CheckoutPage() {
       <Header />
       <Center>
         <PageWrapper>
-          <h1 style={{ 
-            fontFamily: 'var(--font-playfair), serif',
-            fontSize: '2.5rem',
-            marginBottom: '30px',
-            color: '#1a1a1a'
-          }}>Checkout</h1>
+          <Title>Checkout</Title>
           
           <OrderSummaryBox onClick={() => setShowItems(!showItems)}>
             <SummaryLeft>
@@ -502,10 +551,14 @@ export default function CheckoutPage() {
                   if (!product) return null;
                   const itemPrice = item.variantId ? item.price : product.price;
                   
+                  const brandName = product.category?.name || '';
+                  const productTitle = product.title || '';
+                  
                   return (
                     <ItemRow key={key}>
                       <ItemInfo>
-                        <ItemName>{product.title}</ItemName>
+                        {brandName && <BrandName>{brandName}</BrandName>}
+                        <ItemName>{productTitle}</ItemName>
                         {item.size && <ItemSize>Size: {formatSize(item.size)}</ItemSize>}
                         <ItemSize>Qty: {item.quantity}</ItemSize>
                       </ItemInfo>
@@ -518,12 +571,7 @@ export default function CheckoutPage() {
           )}
           
           <Box>
-            <h2 style={{ 
-              fontFamily: 'var(--font-playfair), serif',
-              fontSize: '1.5rem',
-              marginTop: 0,
-              marginBottom: '20px'
-            }}>Shipping Information</h2>
+            <SectionTitle>Shipping Information</SectionTitle>
             
             <Select value={country} onChange={ev => setCountry(ev.target.value)} disabled>
               <option value="Canada">Canada</option>

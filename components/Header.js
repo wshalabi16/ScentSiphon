@@ -15,6 +15,10 @@ const Wrapper = styled.div`
   justify-content: space-between;
   align-items: center;
   padding: 20px 0;
+
+  @media (max-width: 480px) {
+    padding: 15px 0;
+  }
 `;
 
 const Logo = styled(Link)`
@@ -23,6 +27,14 @@ const Logo = styled(Link)`
   font-weight: 700;
   color: #1a1a1a;
   text-decoration: none;
+
+  @media (max-width: 768px) {
+    font-size: 22px;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 20px;
+  }
 `;
 
 const Nav = styled.nav`
@@ -30,16 +42,25 @@ const Nav = styled.nav`
   display: flex;
   gap: 30px;
   font-size: 15px;
-  
+
   a {
     color: #666;
     text-decoration: none;
     font-weight: 400;
     transition: color 0.2s;
-    
+
     &:hover {
       color: #000;
     }
+  }
+
+  @media (max-width: 768px) {
+    gap: 20px;
+  }
+
+  @media (max-width: 480px) {
+    gap: 15px;
+    font-size: 0.9rem;
   }
 `;
 

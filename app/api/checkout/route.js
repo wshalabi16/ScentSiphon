@@ -37,7 +37,8 @@ export async function POST(req) {
 
     const productIds = [...new Set(cartProducts.map(item => item.productId))];
 
-    const productsInfos = await Product.find({ _id: productIds });
+    const productsInfos = await Product.find({ _id: productIds })
+      .populate('category');
 
     // Group cart items by productId + variant
     const groupedCart = {};
@@ -62,14 +63,19 @@ export async function POST(req) {
 
       if (!productInfo) continue;
 
-      const productName = `${productInfo.title} (${item.size})`;
+      // Build full product name: "Brand Title (Size)"
+      const brandName = productInfo.category?.name || '';
+      const fullProductName = brandName 
+        ? `${brandName} ${productInfo.title}`
+        : productInfo.title;
+      const productName = `${fullProductName} (${item.size})`;
 
       line_items.push({
         quantity: item.quantity,
         price_data: {
           currency: 'CAD',
           product_data: { name: productName },
-          unit_amount: Math.round(item.price * 100), // Convert CAD to cents
+          unit_amount: Math.round(item.price * 100),
         },
       });
     }

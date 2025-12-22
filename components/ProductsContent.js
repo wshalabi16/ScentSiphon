@@ -50,20 +50,21 @@ const ContentWrapper = styled.div`
   grid-template-columns: 280px 1fr;
   gap: 40px;
   align-items: start;
-  
+
   @media (max-width: 1024px) {
     grid-template-columns: 240px 1fr;
     gap: 30px;
   }
-  
+
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
+    gap: 20px;
   }
 `;
 
 const FilterColumn = styled.div`
   @media (max-width: 768px) {
-    display: none;
+    margin-bottom: 20px;
   }
 `;
 
@@ -74,7 +75,6 @@ const ProductsColumn = styled.div`
 export default function ProductsContent({ products, brands }) {
   const [selectedBrands, setSelectedBrands] = useState([]);
 
-  // Toggle brand selection
   const handleBrandToggle = (brand) => {
     setSelectedBrands(prev => 
       prev.includes(brand)
@@ -83,7 +83,6 @@ export default function ProductsContent({ products, brands }) {
     );
   };
 
-  // Clear all filters
   const handleClearFilters = () => {
     setSelectedBrands([]);
   };

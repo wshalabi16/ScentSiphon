@@ -19,17 +19,15 @@ export function CartContextProvider({ children }) {
     }
   }, [ls]);
 
-  // Add product with variant info: { productId, variantId, size, price }
   function addProduct(productId, variant) {
     setCartProducts(prev => [...prev, {
       productId,
-      variantId: variant._id || variant.size, // Use size as ID if no _id
+      variantId: variant._id || variant.size, 
       size: variant.size,
       price: variant.price
     }]);
   }
 
-  // Remove one instance of product with matching variant
   function removeProduct(productId, variantId) {
     setCartProducts(prev => {
       const pos = prev.findIndex(item =>

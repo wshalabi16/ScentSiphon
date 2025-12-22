@@ -1,88 +1,112 @@
 "use client";
-
 import { useContext, useState } from "react";
-import { CartContext } from "@/components/CartContext";
 import styled from "styled-components";
+import { CartContext } from "./CartContext";
 
-const ProductInfoWrapper = styled.div`
+const InfoWrapper = styled.div`
   font-family: var(--font-inter), sans-serif;
+`;
+
+const BrandName = styled.div`
+  font-family: var(--font-inter), sans-serif;
+  font-weight: 400;
+  font-size: 0.95rem;
+  color: #666;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 `;
 
 const Title = styled.h1`
   font-family: var(--font-playfair), serif;
   font-size: 2.5rem;
+  margin: 0 0 10px 0;
   font-weight: 500;
-  margin: 0 0 20px 0;
   color: #1a1a1a;
-  
+  letter-spacing: -0.5px;
+
   @media (max-width: 768px) {
-    font-size: 2rem;
+    font-size: 1.8rem;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 1.5rem;
   }
 `;
 
 const Description = styled.p`
   color: #666;
-  line-height: 1.8;
-  margin-bottom: 30px;
   font-size: 1rem;
+  line-height: 1.6;
+  margin: 0 0 30px 0;
+
+  @media (max-width: 480px) {
+    font-size: 0.9rem;
+    margin: 0 0 20px 0;
+  }
 `;
 
-const SizeSelectionLabel = styled.div`
-  font-family: var(--font-playfair), serif;
-  font-size: 1.1rem;
+const SizeSelector = styled.div`
+  margin-bottom: 30px;
+
+  @media (max-width: 480px) {
+    margin-bottom: 20px;
+  }
+`;
+
+const SizeLabel = styled.div`
   font-weight: 500;
-  margin-bottom: 15px;
+  margin-bottom: 12px;
   color: #1a1a1a;
 `;
 
-const VariantButtons = styled.div`
+const SizeOptions = styled.div`
   display: flex;
-  gap: 15px;
-  margin-bottom: 35px;
+  gap: 12px;
   flex-wrap: wrap;
+
+  @media (max-width: 480px) {
+    gap: 8px;
+  }
 `;
 
-const VariantButton = styled.button`
-  font-family: var(--font-inter), sans-serif;
-  padding: 18px 28px;
-  border-radius: 8px;
-  border: 1px solid ${props => props.$selected ? '#1a1a1a' : '#f0f0f0'};
-  background-color: ${props => props.$selected ? '#1a1a1a' : '#fafafa'};
+const SizeButton = styled.button`
+  padding: 12px 24px;
+  border: 2px solid ${props => props.$selected ? '#1a1a1a' : '#e5e5e5'};
+  background-color: ${props => props.$selected ? '#1a1a1a' : 'white'};
   color: ${props => props.$selected ? 'white' : '#1a1a1a'};
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s ease;
-  min-width: 150px;
-  
+  font-family: var(--font-inter), sans-serif;
+  font-weight: 500;
+  transition: all 0.2s;
+  font-size: 0.95rem;
+
   &:hover {
     border-color: #1a1a1a;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    transform: translateY(-1px);
+    background-color: ${props => props.$selected ? '#000' : '#f5f5f5'};
   }
-  
-  &:active {
-    transform: translateY(0);
+
+  @media (max-width: 480px) {
+    padding: 10px 20px;
+    font-size: 0.9rem;
   }
-`;
-
-const VariantSize = styled.div`
-  font-size: 1rem;
-  font-weight: 600;
-  margin-bottom: 4px;
-`;
-
-const VariantPrice = styled.div`
-  font-size: 0.9rem;
-  font-weight: 400;
-  opacity: ${props => props.$selected ? 1 : 0.7};
 `;
 
 const PriceDisplay = styled.div`
-  font-size: 1.8rem;
-  font-weight: 700;
+  font-size: 2rem;
+  font-weight: 600;
   color: #1a1a1a;
-  margin-bottom: 25px;
-  font-family: var(--font-inter), sans-serif;
-  transition: all 0.3s ease;
+  margin-bottom: 30px;
+
+  @media (max-width: 768px) {
+    font-size: 1.5rem;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 1.3rem;
+    margin-bottom: 20px;
+  }
 `;
 
 const AddToCartButton = styled.button`
@@ -91,121 +115,108 @@ const AddToCartButton = styled.button`
   color: white;
   border: none;
   border-radius: 8px;
-  padding: 18px 32px;
+  padding: 16px;
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s;
   font-family: var(--font-inter), sans-serif;
-  letter-spacing: 0.5px;
   
   &:hover {
     background-color: #000;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    transform: translateY(-2px);
-  }
-  
-  &:active {
-    transform: translateY(0);
   }
   
   &:disabled {
     background-color: #ccc;
     cursor: not-allowed;
-    transform: none;
   }
 `;
 
 const SuccessMessage = styled.div`
   margin-top: 15px;
   padding: 12px;
-  background-color: #f0f9f4;
-  border: 1px solid #d4edda;
+  background-color: #dcfce7;
+  color: #16a34a;
   border-radius: 8px;
-  color: #155724;
-  font-size: 0.9rem;
+  font-weight: 500;
   text-align: center;
-  animation: fadeIn 0.3s ease;
-  
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
 `;
 
 export default function ProductInfo({ product }) {
   const { addProduct } = useContext(CartContext);
-  const [selectedVariant, setSelectedVariant] = useState(product.variants?.[0] || null);
+  const [selectedVariant, setSelectedVariant] = useState(
+    product.variants?.[0] || null
+  );
   const [showSuccess, setShowSuccess] = useState(false);
+
+  function formatSize(size) {
+    if (!size) return '';
+    if (typeof size === 'string' && size.toLowerCase().includes('ml')) {
+      return size;
+    }
+    return `${size} ml`;
+  }
+
+  function handleVariantChange(variant) {
+    setSelectedVariant(variant);
+    setShowSuccess(false);
+  }
 
   function handleAddToCart() {
     if (!selectedVariant) return;
     
     addProduct(product._id, selectedVariant);
-    
-    // Show success message
     setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 2000); // Reduced from 3000 to 2000
+    
+    setTimeout(() => {
+      setShowSuccess(false);
+    }, 2000);
   }
 
-  // Clear success message when variant changes
-  function handleVariantChange(variant) {
-    setSelectedVariant(variant);
-    setShowSuccess(false); // Clear success message
-  }
-
-  // Helper function to format size display
-  function formatSize(size) {
-    // If size already has "ml", return as is
-    if (typeof size === 'string' && size.toLowerCase().includes('ml')) {
-      return size;
-    }
-    // Otherwise add "ml"
-    return `${size} ml`;
-  }
+  // Extract brand name and product title separately
+  const brandName = product.category?.name || '';
+  const productTitle = product.title || '';
+  const fullName = brandName ? `${brandName} ${productTitle}` : productTitle;
 
   return (
-    <ProductInfoWrapper>
-      <Title>{product.title}</Title>
-      
-      <Description>{product.description}</Description>
+    <InfoWrapper>
+      {brandName && <BrandName>{brandName}</BrandName>}
+      <Title>{productTitle}</Title>
+      <Description>{product.description || `this is ${fullName}`}</Description>
       
       {product.variants && product.variants.length > 0 && (
-        <>
-          <SizeSelectionLabel>Select Size</SizeSelectionLabel>
-          <VariantButtons>
-            {product.variants.map((variant) => (
-              <VariantButton
-                key={variant.size}
-                $selected={selectedVariant?.size === variant.size}
+        <SizeSelector>
+          <SizeLabel>Select Size</SizeLabel>
+          <SizeOptions>
+            {product.variants.map(variant => (
+              <SizeButton
+                key={variant._id || variant.size}
+                $selected={selectedVariant?._id === variant._id || selectedVariant?.size === variant.size}
                 onClick={() => handleVariantChange(variant)}
               >
-                <VariantSize>{formatSize(variant.size)}</VariantSize>
-                <VariantPrice $selected={selectedVariant?.size === variant.size}>
+                {formatSize(variant.size)}
+                <div style={{ fontSize: '0.85rem', marginTop: '4px' }}>
                   ${variant.price} CAD
-                </VariantPrice>
-              </VariantButton>
+                </div>
+              </SizeButton>
             ))}
-          </VariantButtons>
+          </SizeOptions>
+        </SizeSelector>
+      )}
+      
+      {selectedVariant && (
+        <>
+          <PriceDisplay>${selectedVariant.price} CAD</PriceDisplay>
+          <AddToCartButton onClick={handleAddToCart}>
+            Add to Cart
+          </AddToCartButton>
+          {showSuccess && (
+            <SuccessMessage>
+              ✓ Added {formatSize(selectedVariant.size)} to cart!
+            </SuccessMessage>
+          )}
         </>
       )}
-      
-      <PriceDisplay>
-        ${selectedVariant?.price || product.price} CAD
-      </PriceDisplay>
-      
-      <AddToCartButton 
-        onClick={handleAddToCart}
-        disabled={!selectedVariant}
-      >
-        Add to Cart
-      </AddToCartButton>
-      
-      {showSuccess && (
-        <SuccessMessage>
-          ✓ Added {formatSize(selectedVariant.size)} to cart!
-        </SuccessMessage>
-      )}
-    </ProductInfoWrapper>
+    </InfoWrapper>
   );
 }

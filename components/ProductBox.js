@@ -1,80 +1,186 @@
-"use client";
-import styled from 'styled-components';
-import ButtonLink from "./ButtonLink";
+import styled from "styled-components";
+import Link from "next/link";
 
 const ProductWrapper = styled.div`
   background-color: white;
   border-radius: 12px;
-  padding: 24px;  
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);  
-  border: 1px solid #f0f0f0; 
-  transition: all 0.3s ease; 
+  overflow: hidden;
+  transition: all 0.3s ease;
+  border: 1px solid #f0f0f0;
   
   &:hover {
-    box-shadow: 0 8px 16px rgba(0,0,0,0.08);  
-    transform: translateY(-4px); 
-    border-color: #e5e5e5;  
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    transform: translateY(-4px);
+    border-color: #e0e0e0;
   }
 `;
 
-const WhiteBox = styled.div`
-  background-color: #fafafa;  
-  padding: 20px;
-  height: 180px;
+const ProductImageBox = styled(Link)`
+  display: block;
+  background-color: #fafafa;
+  padding: 30px;
+  height: 240px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
-  margin-bottom: 15px;
-  
+  position: relative;
+  overflow: hidden;
+  text-decoration: none;
+
   img {
     max-width: 100%;
-    max-height: 150px;
+    max-height: 100%;
     object-fit: contain;
+    transition: transform 0.3s ease;
+  }
+
+  &:hover img {
+    transform: scale(1.05);
+  }
+
+  @media (max-width: 768px) {
+    height: 200px;
+    padding: 20px;
+  }
+
+  @media (max-width: 480px) {
+    height: 180px;
+    padding: 15px;
   }
 `;
 
-const ProductTitle = styled.h3`
-  font-family: var(--font-playfair), serif;
-  font-weight: 600;
+const ProductInfoBox = styled.div`
+  padding: 20px;
+  padding-bottom: 30px;
+  box-sizing: border-box;
+
+  * {
+    box-sizing: border-box;
+  }
+
+  @media (max-width: 768px) {
+    padding: 16px;
+    padding-bottom: 24px;
+  }
+
+  @media (max-width: 480px) {
+    padding: 12px;
+    padding-bottom: 20px;
+  }
+`;
+
+const BrandName = styled(Link)`
+  font-family: var(--font-inter), sans-serif;
+  font-weight: 400;
+  font-size: 0.85rem;
+  color: #666;
+  display: block;
+  text-decoration: none;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+
+  &:hover {
+    color: #1a1a1a;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 0.75rem;
+  }
+`;
+
+const ProductTitle = styled(Link)`
+  font-family: var(--font-inter), sans-serif;
+  font-weight: 500;
   font-size: 1rem;
-  margin: 0 0 8px 0;
+  margin: 0 0 12px 0;
   color: #1a1a1a;
-  min-height: 40px;
+  display: block;
+  text-decoration: none;
+  line-height: 1.4;
+
+  &:hover {
+    color: #666;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 0.9rem;
+    margin: 0 0 8px 0;
+  }
 `;
 
 const PriceRow = styled.div`
   display: flex;
+  gap: 12px;
   align-items: center;
-  justify-content: space-between;
-  margin-top: 10px;
+  margin-bottom: 12px;
+`;
+
+const PriceLabel = styled.div`
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.85rem;
+  color: #999;
 `;
 
 const Price = styled.div`
   font-family: var(--font-inter), sans-serif;
-  font-size: 0.9rem;
-  color: #666;
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: #1a1a1a;
+`;
+
+const ViewButton = styled(Link)`
+  display: block;
+  width: 100%;
+  background-color: #1a1a1a;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+  text-decoration: none;
+  font-family: var(--font-inter), sans-serif;
+  box-sizing: border-box;
   
-  span {
-    display: block;
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: #1a1a1a;
-    margin-top: 2px;
+  &:hover {
+    background-color: #000;
   }
 `;
 
 export default function ProductBox({ product }) {
+  const lowestPrice = product.variants && product.variants.length > 0
+    ? Math.min(...product.variants.map(v => v.price))
+    : product.price;
+
+  const brandName = product.category?.name || '';
+  const productTitle = product.title || '';
+
   return (
     <ProductWrapper>
-      <WhiteBox>
-        <img src={product.images?.[0]} alt={product.title} />
-      </WhiteBox>
-      <ProductTitle>{product.title}</ProductTitle>
-      <PriceRow>
-        <Price>Starting from<span>${product.price}</span></Price>
-        <ButtonLink href={`/product/${product._id}`} primary>View</ButtonLink>
-      </PriceRow>
+      <ProductImageBox href={`/product/${product._id}`}>
+        <img src={product.images?.[0]} alt={`${brandName} ${productTitle}`} />
+      </ProductImageBox>
+      <ProductInfoBox>
+        {brandName && (
+          <BrandName href={`/product/${product._id}`}>
+            {brandName}
+          </BrandName>
+        )}
+        <ProductTitle href={`/product/${product._id}`}>
+          {productTitle}
+        </ProductTitle>
+        <PriceRow>
+          <PriceLabel>Starting from</PriceLabel>
+          <Price>${lowestPrice}</Price>
+        </PriceRow>
+        <ViewButton href={`/product/${product._id}`}>
+          View
+        </ViewButton>
+      </ProductInfoBox>
     </ProductWrapper>
   );
 }

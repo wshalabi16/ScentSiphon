@@ -4,21 +4,34 @@ import ProductsContent from "@/components/ProductsContent";
 
 export default async function ProductsPage() {
   await mongooseConnect();
-  
-  // Fetch products and populate category to get brand names
-  const products = await Product.find({}, null, { sort: { '_id': -1 } })
+
+  const products = await Product.find({})
     .populate('category');
 
-  // Extract unique brands from categories
+  // Sort products by brand name alphabetically
+  const sortedProducts = products.sort((a, b) => {
+    const brandA = a.category?.name || '';
+    const brandB = b.category?.name || '';
+
+    // First sort by brand name
+    if (brandA < brandB) return -1;
+    if (brandA > brandB) return 1;
+
+    // If brands are the same, sort by product title
+    const titleA = a.title || '';
+    const titleB = b.title || '';
+    return titleA.localeCompare(titleB);
+  });
+
   const brands = [...new Set(
-    products
+    sortedProducts
       .map(p => p.category?.name)
       .filter(Boolean)
   )].sort();
 
   return (
-    <ProductsContent 
-      products={JSON.parse(JSON.stringify(products))} 
+    <ProductsContent
+      products={JSON.parse(JSON.stringify(sortedProducts))}
       brands={brands}
     />
   );
