@@ -208,10 +208,29 @@ const CheckoutButton = styled.button`
   cursor: pointer;
   transition: all 0.2s;
   font-family: var(--font-inter), sans-serif;
-  
+
   &:hover {
     background-color: #000;
   }
+`;
+
+const StockWarning = styled.div`
+  font-size: 0.8rem;
+  color: ${props => props.$severity === 'critical' ? '#dc2626' : '#f59e0b'};
+  font-weight: 600;
+  margin-top: 4px;
+  font-family: var(--font-inter), sans-serif;
+`;
+
+const OutOfStockBadge = styled.div`
+  font-size: 0.75rem;
+  color: #dc2626;
+  background-color: #fee2e2;
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: inline-block;
+  font-weight: 600;
+  margin-top: 4px;
 `;
 
 export default function CartPage() {
@@ -236,6 +255,21 @@ export default function CartPage() {
       item.productId === productId && item.variantId === variantId
     );
     if (cartItem) {
+      // Check stock before allowing increase
+      const product = products.find(p => p._id === productId);
+      const variant = product?.variants?.find(v => v._id === variantId);
+      const currentStock = variant?.stock || 0;
+
+      // Count current quantity in cart
+      const currentQuantity = cartProducts.filter(item =>
+        item.productId === productId && item.variantId === variantId
+      ).length;
+
+      // Prevent adding if at or over stock limit
+      if (currentQuantity >= currentStock) {
+        return; // Don't add more
+      }
+
       addProduct(productId, { size: cartItem.size, price: cartItem.price, _id: variantId });
     }
   }
@@ -334,6 +368,13 @@ export default function CartPage() {
                         const productTitle = product.title || '';
                         const fullName = brandName ? `${brandName} ${productTitle}` : productTitle;
 
+                        // Find variant to check stock
+                        const variant = product.variants?.find(v => v._id === item.variantId);
+                        const currentStock = variant?.stock || 0;
+                        const isOutOfStock = currentStock === 0;
+                        const isLowStock = currentStock > 0 && currentStock <= 5;
+                        const hasInsufficientStock = currentStock < item.quantity;
+
                         return (
                           <tr key={key}>
                             <ProductInfoCell>
@@ -349,6 +390,19 @@ export default function CartPage() {
                                   {item.size && (
                                     <VariantInfo>Size: {formatSize(item.size)}</VariantInfo>
                                   )}
+                                  {isOutOfStock && (
+                                    <OutOfStockBadge>Out of Stock</OutOfStockBadge>
+                                  )}
+                                  {!isOutOfStock && hasInsufficientStock && (
+                                    <StockWarning $severity="critical">
+                                      Only {currentStock} available
+                                    </StockWarning>
+                                  )}
+                                  {!isOutOfStock && !hasInsufficientStock && isLowStock && (
+                                    <StockWarning $severity="warning">
+                                      Only {currentStock} left
+                                    </StockWarning>
+                                  )}
                                 </ProductDetails>
                               </div>
                             </ProductInfoCell>
@@ -359,7 +413,14 @@ export default function CartPage() {
                               <QuantityLabel>
                                 {item.quantity}
                               </QuantityLabel>
-                              <QuantityButton onClick={() => moreOfThisProduct(item.productId, item.variantId)}>
+                              <QuantityButton
+                                onClick={() => moreOfThisProduct(item.productId, item.variantId)}
+                                disabled={item.quantity >= currentStock}
+                                style={{
+                                  opacity: item.quantity >= currentStock ? 0.5 : 1,
+                                  cursor: item.quantity >= currentStock ? 'not-allowed' : 'pointer'
+                                }}
+                              >
                                 +
                               </QuantityButton>
                             </td>
@@ -385,6 +446,13 @@ export default function CartPage() {
                   const productTitle = product.title || '';
                   const fullName = brandName ? `${brandName} ${productTitle}` : productTitle;
 
+                  // Find variant to check stock (mobile)
+                  const variant = product.variants?.find(v => v._id === item.variantId);
+                  const currentStock = variant?.stock || 0;
+                  const isOutOfStock = currentStock === 0;
+                  const isLowStock = currentStock > 0 && currentStock <= 5;
+                  const hasInsufficientStock = currentStock < item.quantity;
+
                   return (
                     <MobileCartItem key={key}>
                       <MobileProductInfo>
@@ -399,6 +467,19 @@ export default function CartPage() {
                           {item.size && (
                             <VariantInfo>Size: {formatSize(item.size)}</VariantInfo>
                           )}
+                          {isOutOfStock && (
+                            <OutOfStockBadge>Out of Stock</OutOfStockBadge>
+                          )}
+                          {!isOutOfStock && hasInsufficientStock && (
+                            <StockWarning $severity="critical">
+                              Only {currentStock} available
+                            </StockWarning>
+                          )}
+                          {!isOutOfStock && !hasInsufficientStock && isLowStock && (
+                            <StockWarning $severity="warning">
+                              Only {currentStock} left
+                            </StockWarning>
+                          )}
                         </MobileProductDetails>
                       </MobileProductInfo>
                       <MobileActions>
@@ -409,7 +490,14 @@ export default function CartPage() {
                           <QuantityLabel>
                             {item.quantity}
                           </QuantityLabel>
-                          <QuantityButton onClick={() => moreOfThisProduct(item.productId, item.variantId)}>
+                          <QuantityButton
+                            onClick={() => moreOfThisProduct(item.productId, item.variantId)}
+                            disabled={item.quantity >= currentStock}
+                            style={{
+                              opacity: item.quantity >= currentStock ? 0.5 : 1,
+                              cursor: item.quantity >= currentStock ? 'not-allowed' : 'pointer'
+                            }}
+                          >
                             +
                           </QuantityButton>
                         </div>

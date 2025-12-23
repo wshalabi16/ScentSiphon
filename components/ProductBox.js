@@ -145,10 +145,22 @@ const ViewButton = styled(Link)`
   text-decoration: none;
   font-family: var(--font-inter), sans-serif;
   box-sizing: border-box;
-  
+
   &:hover {
     background-color: #000;
   }
+`;
+
+const StockBadge = styled.div`
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: inline-block;
+  margin-bottom: 8px;
+  font-family: var(--font-inter), sans-serif;
+  background-color: ${props => props.$type === 'out' ? '#fee2e2' : '#fef3c7'};
+  color: ${props => props.$type === 'out' ? '#dc2626' : '#f59e0b'};
 `;
 
 export default function ProductBox({ product }) {
@@ -158,6 +170,19 @@ export default function ProductBox({ product }) {
 
   const brandName = product.category?.name || '';
   const productTitle = product.title || '';
+
+  // Check stock status
+  const hasVariants = product.variants && product.variants.length > 0;
+  let allOutOfStock = false;
+  let hasLowStock = false;
+
+  if (hasVariants) {
+    allOutOfStock = product.variants.every(v => (v.stock || 0) === 0);
+    hasLowStock = !allOutOfStock && product.variants.some(v => {
+      const stock = v.stock || 0;
+      return stock > 0 && stock <= 5;
+    });
+  }
 
   return (
     <ProductWrapper>
@@ -173,6 +198,12 @@ export default function ProductBox({ product }) {
         <ProductTitle href={`/product/${product._id}`}>
           {productTitle}
         </ProductTitle>
+        {allOutOfStock && (
+          <StockBadge $type="out">Out of Stock</StockBadge>
+        )}
+        {!allOutOfStock && hasLowStock && (
+          <StockBadge $type="low">Low Stock</StockBadge>
+        )}
         <PriceRow>
           <PriceLabel>Starting from</PriceLabel>
           <Price>${lowestPrice}</Price>

@@ -273,6 +273,75 @@ const SuccessTitle = styled.h2`
   }
 `;
 
+const ErrorBox = styled.div`
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  font-family: var(--font-inter), sans-serif;
+`;
+
+const ErrorTitle = styled.h3`
+  color: #dc2626;
+  font-size: 1.1rem;
+  margin: 0 0 10px 0;
+  font-weight: 600;
+`;
+
+const ErrorMessage = styled.p`
+  color: #991b1b;
+  margin: 0 0 15px 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+`;
+
+const ErrorDetails = styled.div`
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 15px;
+  margin-top: 15px;
+  font-size: 0.9rem;
+`;
+
+const ErrorRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #fee2e2;
+
+  &:last-child {
+    border-bottom: none;
+  }
+`;
+
+const ErrorLabel = styled.span`
+  color: #666;
+  font-weight: 500;
+`;
+
+const ErrorValue = styled.span`
+  color: #1a1a1a;
+  font-weight: 600;
+`;
+
+const CloseErrorButton = styled.button`
+  background-color: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-inter), sans-serif;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: #b91c1c;
+  }
+`;
+
 const CANADIAN_PROVINCES = [
   { value: 'AB', label: 'Alberta' },
   { value: 'BC', label: 'British Columbia' },
@@ -306,6 +375,7 @@ export default function CheckoutPage() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [orderData, setOrderData] = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (cartProducts.length > 0) {
@@ -433,8 +503,26 @@ export default function CheckoutPage() {
       }
     } catch (error) {
       console.error('Checkout error:', error);
-      alert('Something went wrong. Please try again.');
       setIsLoading(false);
+
+      // Handle stock errors specifically
+      if (error.response?.data?.error === 'insufficient_stock') {
+        const stockError = error.response.data;
+        setError({
+          type: 'stock',
+          message: stockError.message,
+          productName: stockError.productName,
+          variantSize: stockError.variantSize,
+          availableStock: stockError.availableStock,
+          requestedQuantity: stockError.requestedQuantity
+        });
+      } else {
+        // Generic error
+        setError({
+          type: 'generic',
+          message: error.response?.data?.error || 'Something went wrong. Please try again.'
+        });
+      }
     }
   }
 
@@ -542,7 +630,47 @@ export default function CheckoutPage() {
             </SummaryLeft>
             <TotalAmount>${total.toFixed(2)}</TotalAmount>
           </OrderSummaryBox>
-          
+
+          {error && (
+            <ErrorBox>
+              {error.type === 'stock' ? (
+                <>
+                  <ErrorTitle>⚠️ Insufficient Stock</ErrorTitle>
+                  <ErrorMessage>{error.message}</ErrorMessage>
+                  <ErrorDetails>
+                    <ErrorRow>
+                      <ErrorLabel>Product:</ErrorLabel>
+                      <ErrorValue>{error.productName} ({error.variantSize})</ErrorValue>
+                    </ErrorRow>
+                    <ErrorRow>
+                      <ErrorLabel>You requested:</ErrorLabel>
+                      <ErrorValue>{error.requestedQuantity} units</ErrorValue>
+                    </ErrorRow>
+                    <ErrorRow>
+                      <ErrorLabel>Available stock:</ErrorLabel>
+                      <ErrorValue>{error.availableStock} units</ErrorValue>
+                    </ErrorRow>
+                  </ErrorDetails>
+                  <div style={{ marginTop: '15px', textAlign: 'right' }}>
+                    <CloseErrorButton onClick={() => setError(null)}>
+                      Got it
+                    </CloseErrorButton>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <ErrorTitle>⚠️ Checkout Error</ErrorTitle>
+                  <ErrorMessage>{error.message}</ErrorMessage>
+                  <div style={{ marginTop: '15px', textAlign: 'right' }}>
+                    <CloseErrorButton onClick={() => setError(null)}>
+                      Close
+                    </CloseErrorButton>
+                  </div>
+                </>
+              )}
+            </ErrorBox>
+          )}
+
           {showItems && (
             <Box>
               <ExpandedItems>

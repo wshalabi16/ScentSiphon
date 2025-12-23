@@ -56,27 +56,75 @@ export async function POST(req) {
       groupedCart[key].quantity++;
     });
 
-    // Build line items for Stripe
+    // Build line items for Stripe and validate stock
     let line_items = [];
+    let orderItems = []; // For storing in database (for webhook stock decrement)
+
     for (const [key, item] of Object.entries(groupedCart)) {
       const productInfo = productsInfos.find(p => p._id.toString() === item.productId);
 
-      if (!productInfo) continue;
+      if (!productInfo) {
+        return NextResponse.json(
+          { error: 'One or more products in cart not found' },
+          { status: 400 }
+        );
+      }
+
+      // Find the matching variant in the database to get the REAL price
+      const variant = productInfo.variants.find(v => v._id.toString() === item.variantId);
+
+      if (!variant) {
+        return NextResponse.json(
+          { error: `Invalid variant for product: ${productInfo.title}` },
+          { status: 400 }
+        );
+      }
+
+      // STOCK VALIDATION: Check if sufficient stock available
+      if (variant.stock < item.quantity) {
+        const brandName = productInfo.category?.name || '';
+        const fullProductName = brandName
+          ? `${brandName} ${productInfo.title}`
+          : productInfo.title;
+
+        return NextResponse.json({
+          error: 'insufficient_stock',
+          message: `Sorry, only ${variant.stock} units of ${fullProductName} (${variant.size}) are available. Please adjust your cart.`,
+          availableStock: variant.stock,
+          requestedQuantity: item.quantity,
+          productName: fullProductName,
+          variantSize: variant.size
+        }, { status: 400 });
+      }
+
+      // SECURITY FIX: Use server-side price from database, NEVER trust client
+      const serverPrice = variant.price;
 
       // Build full product name: "Brand Title (Size)"
       const brandName = productInfo.category?.name || '';
-      const fullProductName = brandName 
+      const fullProductName = brandName
         ? `${brandName} ${productInfo.title}`
         : productInfo.title;
-      const productName = `${fullProductName} (${item.size})`;
+      const productName = `${fullProductName} (${variant.size})`;
 
+      // Stripe line item
       line_items.push({
         quantity: item.quantity,
         price_data: {
           currency: 'CAD',
           product_data: { name: productName },
-          unit_amount: Math.round(item.price * 100),
+          unit_amount: Math.round(serverPrice * 100),  // Using SERVER price
         },
+      });
+
+      // Store structured order item for webhook processing
+      orderItems.push({
+        productId: item.productId,
+        variantId: item.variantId,
+        quantity: item.quantity,
+        price: serverPrice,
+        size: variant.size,
+        productName: fullProductName
       });
     }
 
@@ -87,7 +135,7 @@ export async function POST(req) {
 
     // Create order document
     const orderDoc = await Order.create({
-      line_items,
+      line_items: orderItems,  // Store structured data for webhook
       name,
       email,
       city,
