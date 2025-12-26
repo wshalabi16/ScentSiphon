@@ -88,22 +88,42 @@ const ImageButton = styled.div`
   }
 `;
 
-export default function ProductImages({images}) {
-  const [activeImage, setActiveImage] = useState(images?.[0]);
-  
+export default function ProductImages({images, productName = "Product", brandName = ""}) {
+   const [activeImage, setActiveImage] = useState(images?.[0]);
+
+  // Create descriptive alt text for accessibility
+  const fullProductName = brandName ? `${brandName} ${productName}` : productName;
+  const mainAltText = `${fullProductName} - Main product image`;
+  const thumbnailAltText = (index) => `${fullProductName} - Image ${index + 1}`;
+
   return (
     <ImageGalleryWrapper>
       <BigImageWrapper>
-        <BigImage src={activeImage} alt="" />
+        <BigImage
+          src={activeImage}
+          alt={mainAltText}
+        />
       </BigImageWrapper>
       <ImageButtons>
-        {images?.map(image => (
-          <ImageButton 
-            key={image} 
+        {images?.map((image, index) => (
+          <ImageButton
+            key={image}
             $active={image === activeImage}
             onClick={() => setActiveImage(image)}
+            role="button"
+            tabIndex={0}
+            aria-label={thumbnailAltText(index)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setActiveImage(image);
+              }
+            }}
           >
-            <img src={image} alt="" />
+            <img
+              src={image}
+              alt={thumbnailAltText(index)}
+            />
           </ImageButton>
         ))}
       </ImageButtons>

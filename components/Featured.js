@@ -120,8 +120,12 @@ export default function Featured({ product }) {
           </TextContent>
           <ImageWrapper>
             <img
-              src={product.images?.[0]}
+              src={product.images?.[0] || '/placeholder-product.png'}
               alt={fullName}
+              onError={(e) => {
+                e.target.onerror = null; // Prevent infinite loop
+                e.target.src = '/placeholder-product.png';
+              }}
             />
           </ImageWrapper>
         </ColumnsWrapper>

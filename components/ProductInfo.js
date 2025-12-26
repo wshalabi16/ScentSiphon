@@ -1,7 +1,8 @@
 "use client";
-import { useContext, useState } from "react";
+import { useContext, useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 import { CartContext } from "./CartContext";
+import { formatSize } from "@/lib/formatters";
 
 const InfoWrapper = styled.div`
   font-family: var(--font-inter), sans-serif;
@@ -84,21 +85,24 @@ const SizeButton = styled.button`
   }
 `;
 
-const VariantPrice = styled.div`
+const VariantPrice = styled.span`
   font-size: 0.85rem;
   margin-top: 4px;
+  display: block;
 `;
 
-const StockWarning = styled.div`
+const StockWarning = styled.span`
   font-size: 0.75rem;
   margin-top: 2px;
   color: #f59e0b;
   font-weight: 600;
+  display: block;
 `;
 
-const OutOfStockBadge = styled.div`
+const OutOfStockBadge = styled.span`
   font-size: 0.85rem;
   color: #dc2626;
+  display: block;
   font-weight: 600;
 `;
 
@@ -139,36 +143,51 @@ const SuccessMessage = styled.div`
 
 export default function ProductInfo({ product }) {
   const { addProduct } = useContext(CartContext);
-  
+
   // Select first available variant (with stock > 0), or first variant if all out
   const firstAvailableVariant = product.variants?.find(v => v.stock > 0) || product.variants?.[0];
   const [selectedVariant, setSelectedVariant] = useState(firstAvailableVariant || null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const successTimeoutRef = useRef(null);
 
-  function formatSize(size) {
-    if (!size) return '';
-    if (typeof size === 'string' && size.toLowerCase().includes('ml')) {
-      return size;
-    }
-    return `${size} ml`;
-  }
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (successTimeoutRef.current) {
+        clearTimeout(successTimeoutRef.current);
+      }
+    };
+  }, []);
+
 
   function handleVariantChange(variant) {
     // Don't allow selecting out of stock variants
     if (variant.stock === 0) return;
-    
+
     setSelectedVariant(variant);
     setShowSuccess(false);
+
+    // Clear any existing timeout
+    if (successTimeoutRef.current) {
+      clearTimeout(successTimeoutRef.current);
+    }
   }
 
   function handleAddToCart() {
     if (!selectedVariant || selectedVariant.stock === 0) return;
-    
+
     addProduct(product._id, selectedVariant);
     setShowSuccess(true);
-    
-    setTimeout(() => {
+
+    // Clear any existing timeout
+    if (successTimeoutRef.current) {
+      clearTimeout(successTimeoutRef.current);
+    }
+
+    // Set new timeout and store reference
+    successTimeoutRef.current = setTimeout(() => {
       setShowSuccess(false);
+      successTimeoutRef.current = null;
     }, 2000);
   }
 
@@ -221,10 +240,10 @@ export default function ProductInfo({ product }) {
         </SizeSelector>
       )}
       
-      {selectedVariant && (
+      {selectedVariant ? (
         <>
           <PriceDisplay>${selectedVariant.price} CAD</PriceDisplay>
-          <AddToCartButton 
+          <AddToCartButton
             onClick={handleAddToCart}
             disabled={isOutOfStock}
           >
@@ -232,10 +251,14 @@ export default function ProductInfo({ product }) {
           </AddToCartButton>
           {showSuccess && !isOutOfStock && (
             <SuccessMessage>
-              ✓ Added {formatSize(selectedVariant.size)} to cart!
+              ✓ Added {fullName} {formatSize(selectedVariant.size)} to cart!
             </SuccessMessage>
           )}
         </>
+      ) : (
+        <PriceDisplay>
+          {product.price ? `$${product.price} CAD` : 'Price unavailable'}
+        </PriceDisplay>
       )}
     </InfoWrapper>
   );

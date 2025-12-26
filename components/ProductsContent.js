@@ -90,8 +90,9 @@ export default function ProductsContent({ products, brands }) {
   // Filter products based on selected brands
   const filteredProducts = selectedBrands.length > 0
     ? products.filter(product => {
-        const productBrand = product.category?.name;
-        return selectedBrands.includes(productBrand);
+        const brandName = product.category?.name;
+        // Only include products that have a valid category/brand
+        return brandName && selectedBrands.includes(brandName);
       })
     : products;
 

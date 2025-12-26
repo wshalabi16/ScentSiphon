@@ -22,7 +22,28 @@ const Title = styled.h2`
   }
 `;
 
+const EmptyState = styled.div`
+  font-family: var(--font-inter), sans-serif;
+  text-align: center;
+  padding: 60px 20px;
+  color: #666;
+  font-size: 1rem;
+
+  @media (max-width: 768px) {
+    padding: 40px 20px;
+  }
+`;
+
 export default function NewProducts({ products }) {
+  if (!products || products.length === 0) {
+    return (
+      <Center>
+        <Title>New Arrivals</Title>
+        <EmptyState>No new products available at the moment. Check back soon!</EmptyState>
+      </Center>
+    );
+  }
+
   return (
     <Center>
       <Title>New Arrivals</Title>

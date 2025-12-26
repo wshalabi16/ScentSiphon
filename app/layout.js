@@ -1,7 +1,14 @@
 import StyledComponentsRegistry from './registry';
 import GlobalStyles from '@/components/GlobalStyles';
-import { CartContextProvider } from '@/components/CartContext';  
+import { CartContextProvider } from '@/components/CartContext';
+import RootErrorBoundary from '@/components/RootErrorBoundary';
 import { Playfair_Display, Inter } from "next/font/google";
+import { validateEnv } from '@/lib/env';
+
+// Validate environment variables at startup
+if (typeof window === 'undefined') {
+  validateEnv();
+}
 
 const playfair = Playfair_Display({
   variable: "--font-playfair",
@@ -24,10 +31,12 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body className={`${playfair.variable} ${inter.variable}`}>
         <StyledComponentsRegistry>
-          <CartContextProvider>  
-            <GlobalStyles />
-            {children}
-          </CartContextProvider>  
+          <RootErrorBoundary>
+            <CartContextProvider>
+              <GlobalStyles />
+              {children}
+            </CartContextProvider>
+          </RootErrorBoundary>
         </StyledComponentsRegistry>
       </body>
     </html>

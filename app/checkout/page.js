@@ -6,6 +6,8 @@ import Header from "@/components/Header";
 import Center from "@/components/Center";
 import styled from "styled-components";
 import axios from "axios";
+import { calculateShipping, isFreeShipping } from "@/lib/shipping";
+import { formatSize } from "@/lib/formatters";
 
 const PageWrapper = styled.div`
   max-width: 600px;
@@ -342,6 +344,17 @@ const CloseErrorButton = styled.button`
   }
 `;
 
+// ✅ NEW: Free shipping badge
+const FreeShippingBadge = styled.div`
+  background-color: #22c55e;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-block;
+`;
+
 const CANADIAN_PROVINCES = [
   { value: 'AB', label: 'Alberta' },
   { value: 'BC', label: 'British Columbia' },
@@ -377,15 +390,51 @@ export default function CheckoutPage() {
   const [orderData, setOrderData] = useState(null);
   const [error, setError] = useState(null);
 
+  // Redirect to cart if empty
+  useEffect(() => {
+    if (typeof window !== 'undefined' && cartProducts.length === 0 && !isSuccess) {
+      window.location.href = '/cart';
+    }
+  }, [cartProducts, isSuccess]);
+
+  // Load reCAPTCHA v3 script
+  useEffect(() => {
+    const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+    if (!siteKey) {
+      console.error('❌ CRITICAL: reCAPTCHA site key not configured');
+      setError({
+        type: 'config',
+        message: 'Checkout is temporarily unavailable. Please contact support.',
+      });
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = `https://www.google.com/recaptcha/api.js?render=${siteKey}`;
+    script.async = true;
+    document.head.appendChild(script);
+
+    return () => {
+      // Cleanup script on unmount
+      if (document.head.contains(script)) {
+        document.head.removeChild(script);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (cartProducts.length > 0) {
       const productIds = [...new Set(cartProducts.map(item => 
         typeof item === 'string' ? item : item.productId
       ))];
-      
+
       axios.post('/api/cart', { ids: productIds })
         .then(response => {
           setProducts(response.data);
+        })
+        .catch(error => {
+          console.error('Failed to load product details for checkout:', error);
+          // Keep existing products in state on error to avoid blank checkout
         });
     } else {
       setProducts([]);
@@ -396,26 +445,37 @@ export default function CheckoutPage() {
     if (typeof window === 'undefined') {
       return;
     }
-    if (window?.location.href.includes('success')) {
-      setIsSuccess(true);
-      
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const isSuccess = urlParams.get('success') === '1';
+    const isCanceled = urlParams.get('canceled') === '1';
+
+    if (isSuccess && !isCanceled) {
+      // Check if we have order data saved (only exists if checkout was initiated)
       const savedOrderData = localStorage.getItem('lastOrder');
+
       if (savedOrderData) {
+        // We have order data → legitimate success flow
+        setIsSuccess(true);
         setOrderData(JSON.parse(savedOrderData));
         localStorage.removeItem('lastOrder');
-      }
-      
-      clearCart();
-    }
-  }, []);
 
-  function formatSize(size) {
-    if (!size) return '';
-    if (typeof size === 'string' && size.toLowerCase().includes('ml')) {
-      return size;
+        // Clear cart only when we have confirmed order data
+        clearCart();
+      } else {
+        // success=1 but NO order data → suspicious/manual navigation
+        // This could be:
+        // 1. User manually typed URL
+        // 2. Old bookmark
+        // 3. Multiple redirects clearing localStorage
+        // Safest action: redirect to cart to prevent confusion
+        console.warn('Success URL accessed without order data - redirecting to cart');
+        window.location.href = '/cart';
+      }
     }
-    return `${size} ml`;
-  }
+
+    // If canceled, keep cart intact so user can retry
+  }, []);
 
   function getProvinceName(code) {
     const province = CANADIAN_PROVINCES.find(p => p.value === code);
@@ -445,25 +505,53 @@ export default function CheckoutPage() {
     }
   });
 
-  let total = 0;
+  // ✅ Calculate subtotal
+  let subtotal = 0;
   let itemCount = 0;
   Object.values(groupedCart).forEach(item => {
     itemCount += item.quantity;
     if (item.variantId) {
-      total += item.quantity * item.price;
+      subtotal += item.quantity * item.price;
     } else {
       const product = products.find(p => p._id === item.productId);
-      total += item.quantity * (product?.price || 0);
+      subtotal += item.quantity * (product?.price || 0);
     }
   });
 
+  // ✅ Calculate shipping using helper functions
+  const shippingCost = calculateShipping(subtotal);
+  const qualifiesForFreeShipping = isFreeShipping(subtotal);
+
+  // ✅ Calculate total (subtotal + shipping)
+  const total = subtotal + shippingCost;
+
   async function goToPayment() {
     setIsLoading(true);
+    setError(null);
+
     try {
+      // Generate reCAPTCHA token before checkout
+      let recaptchaToken = null;
+      const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+
+      if (siteKey && window.grecaptcha) {
+        try {
+          recaptchaToken = await window.grecaptcha.execute(siteKey, { action: 'checkout' });
+        } catch (recaptchaError) {
+          console.error('reCAPTCHA error:', recaptchaError);
+          setError({
+            type: 'generic',
+            message: 'Security verification failed. Please refresh the page and try again.'
+          });
+          setIsLoading(false);
+          return;
+        }
+      }
+
       const name = `${firstName} ${lastName}`.trim();
-      
+
       const orderDataToSave = {
-        items: Object.entries(groupedCart).map(([key, item]) => {
+        items: Object.entries(groupedCart).map(([, item]) => {
           const product = products.find(p => p._id === item.productId);
           return {
             product: product,
@@ -472,6 +560,8 @@ export default function CheckoutPage() {
             price: item.variantId ? item.price : product?.price
           };
         }),
+        subtotal,
+        shippingCost,
         total,
         shippingInfo: {
           name,
@@ -484,7 +574,7 @@ export default function CheckoutPage() {
         }
       };
       localStorage.setItem('lastOrder', JSON.stringify(orderDataToSave));
-      
+
       const response = await axios.post('/api/checkout', {
         name,
         email,
@@ -496,9 +586,11 @@ export default function CheckoutPage() {
         country,
         phone,
         cartProducts,
+        recaptchaToken, // Include reCAPTCHA token
       });
-      
+
       if (response.data.url) {
+        // Redirect to Stripe checkout (lastOrder in localStorage is our source of truth)
         window.location = response.data.url;
       }
     } catch (error) {
@@ -566,6 +658,27 @@ export default function CheckoutPage() {
                     </ItemRow>
                   );
                 })}
+                
+                {/* ✅ Show shipping on success page */}
+                <ItemRow style={{ marginTop: '10px', fontSize: '0.95rem' }}>
+                  <ItemInfo>
+                    <ItemName>Subtotal</ItemName>
+                  </ItemInfo>
+                  <ItemPrice>${orderData.subtotal.toFixed(2)}</ItemPrice>
+                </ItemRow>
+
+                <ItemRow style={{ fontSize: '0.95rem' }}>
+                  <ItemInfo>
+                    <ItemName>Shipping</ItemName>
+                  </ItemInfo>
+                  <ItemPrice>
+                    {orderData.shippingCost === 0 ? (
+                      <FreeShippingBadge>FREE</FreeShippingBadge>
+                    ) : (
+                      `$${orderData.shippingCost.toFixed(2)}`
+                    )}
+                  </ItemPrice>
+                </ItemRow>
                 
                 <ItemRow style={{ 
                   marginTop: '20px', 
@@ -694,6 +807,45 @@ export default function CheckoutPage() {
                     </ItemRow>
                   );
                 })}
+                
+                {/* ✅ Show shipping in expanded view */}
+                <ItemRow style={{ 
+                  marginTop: '15px', 
+                  paddingTop: '15px', 
+                  borderTop: '1px solid #f0f0f0',
+                  fontSize: '0.9rem'
+                }}>
+                  <ItemInfo>
+                    <ItemName>Subtotal</ItemName>
+                  </ItemInfo>
+                  <ItemPrice>${subtotal.toFixed(2)}</ItemPrice>
+                </ItemRow>
+
+                <ItemRow style={{ fontSize: '0.9rem' }}>
+                  <ItemInfo>
+                    <ItemName>Shipping</ItemName>
+                  </ItemInfo>
+                  <ItemPrice>
+                    {qualifiesForFreeShipping ? (
+                      <FreeShippingBadge>FREE</FreeShippingBadge>
+                    ) : (
+                      `$${shippingCost.toFixed(2)}`
+                    )}
+                  </ItemPrice>
+                </ItemRow>
+
+                <ItemRow style={{ 
+                  marginTop: '10px', 
+                  paddingTop: '10px', 
+                  borderTop: '2px solid #1a1a1a',
+                  fontSize: '1.1rem',
+                  fontWeight: 600
+                }}>
+                  <ItemInfo>
+                    <ItemName>Total</ItemName>
+                  </ItemInfo>
+                  <ItemPrice>${total.toFixed(2)} CAD</ItemPrice>
+                </ItemRow>
               </ExpandedItems>
             </Box>
           )}

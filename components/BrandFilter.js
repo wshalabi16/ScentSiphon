@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import styled from "styled-components";
 
 const FilterWrapper = styled.div`
@@ -150,9 +150,22 @@ const ClearButton = styled.button`
 export default function BrandFilter({ brands, selectedBrands, onBrandToggle, onClearFilters }) {
   const [isOpen, setIsOpen] = useState(false);
 
+  // Handle window resize: auto-open on desktop, keep closed state on mobile
+  useEffect(() => {
+    const handleResize = () => {
+      if (typeof window !== "undefined" && window.innerWidth > 768) {
+        setIsOpen(false);
+      }
+    };
+
+    handleResize(); 
+    window.addEventListener('resize', handleResize);
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const handleHeaderClick = () => {
-    // Only toggle on mobile (< 769px)
-    if (window.innerWidth <= 768) {
+    if (typeof window !== "undefined" && window.innerWidth <= 768) {
       setIsOpen(!isOpen);
     }
   };
@@ -169,8 +182,8 @@ export default function BrandFilter({ brands, selectedBrands, onBrandToggle, onC
         <ToggleIcon $isOpen={isOpen}>▼</ToggleIcon>
       </FilterHeader>
       <BrandList $isOpen={isOpen}>
-        {brands.map(brand => (
-          <BrandLabel key={brand}>
+        {brands.map((brand, index) => (
+          <BrandLabel key={`${brand}-${index}`}>
             <input
               type="checkbox"
               checked={selectedBrands.includes(brand)}

@@ -152,21 +152,32 @@ const ViewButton = styled(Link)`
 `;
 
 const StockBadge = styled.div`
+  position: absolute;
+  top: 12px;
+  right: 12px;
   font-size: 0.75rem;
   font-weight: 600;
-  padding: 4px 8px;
+  padding: 6px 10px;
   border-radius: 4px;
-  display: inline-block;
-  margin-bottom: 8px;
   font-family: var(--font-inter), sans-serif;
   background-color: ${props => props.$type === 'out' ? '#fee2e2' : '#fef3c7'};
   color: ${props => props.$type === 'out' ? '#dc2626' : '#f59e0b'};
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 `;
 
 export default function ProductBox({ product }) {
-  const lowestPrice = product.variants && product.variants.length > 0
-    ? Math.min(...product.variants.map(v => v.price))
-    : product.price;
+  // Calculate lowest price with protection against empty arrays
+  let lowestPrice = 0;
+  if (product.variants && product.variants.length > 0) {
+    const validPrices = product.variants
+      .map(v => v.price)
+      .filter(price => price != null && !isNaN(price) && price > 0);
+
+    lowestPrice = validPrices.length > 0 ? Math.min(...validPrices) : (product.price || 0);
+  } else {
+    lowestPrice = product.price || 0;
+  }
 
   const brandName = product.category?.name || '';
   const productTitle = product.title || '';
@@ -187,6 +198,12 @@ export default function ProductBox({ product }) {
   return (
     <ProductWrapper>
       <ProductImageBox href={`/product/${product._id}`}>
+        {allOutOfStock && (
+          <StockBadge $type="out">Out of Stock</StockBadge>
+        )}
+        {!allOutOfStock && hasLowStock && (
+          <StockBadge $type="low">Low Stock</StockBadge>
+        )}
         <img src={product.images?.[0]} alt={`${brandName} ${productTitle}`} />
       </ProductImageBox>
       <ProductInfoBox>
@@ -198,15 +215,9 @@ export default function ProductBox({ product }) {
         <ProductTitle href={`/product/${product._id}`}>
           {productTitle}
         </ProductTitle>
-        {allOutOfStock && (
-          <StockBadge $type="out">Out of Stock</StockBadge>
-        )}
-        {!allOutOfStock && hasLowStock && (
-          <StockBadge $type="low">Low Stock</StockBadge>
-        )}
         <PriceRow>
           <PriceLabel>Starting from</PriceLabel>
-          <Price>${lowestPrice}</Price>
+          <Price>${lowestPrice.toFixed(2)}</Price>
         </PriceRow>
         <ViewButton href={`/product/${product._id}`}>
           View

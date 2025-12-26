@@ -65,7 +65,7 @@ const Nav = styled.nav`
 `;
 
 export default function Header() {
-  const { cartProducts } = useContext(CartContext);  
+  const { cartProducts } = useContext(CartContext);
 
   return (
     <StyledHeader>
@@ -75,7 +75,7 @@ export default function Header() {
           <Nav>
             {/* <Link href="/categories">Categories</Link> */}
             <Link href="/products">All Products</Link>
-            <Link href="/cart">Cart ({cartProducts.length})</Link>  
+            <Link href="/cart">Cart ({cartProducts?.length || 0})</Link>  
           </Nav>
         </Wrapper>
       </Center>

@@ -10,6 +10,8 @@ import styled from "styled-components";
 import Table from "@/components/Table";
 import axios from "axios";
 import Link from "next/link";
+import { formatSize } from "@/lib/formatters";
+import { calculateShipping, isFreeShipping, amountNeededForFreeShipping } from "@/lib/shipping";
 
 const ProductInfoCell = styled.td`
   padding: 16px 8px;
@@ -89,15 +91,6 @@ const QuantityButton = styled.button`
   }
 `;
 
-const TotalRow = styled.tr`
-  td {
-    padding: 20px 8px 0;
-    border-bottom: none;
-    font-weight: 600;
-    font-size: 1.1rem;
-  }
-`;
-
 const EmptyCart = styled.div`
   text-align: center;
   padding: 60px 20px;
@@ -150,29 +143,6 @@ const MobileActions = styled.div`
 const MobilePrice = styled.div`
   font-weight: 600;
   font-size: 1.1rem;
-`;
-
-const MobileTotalSection = styled.div`
-  display: none;
-
-  @media (max-width: 768px) {
-    display: block;
-    background: white;
-    border-radius: 8px;
-    padding: 16px;
-    margin-top: 20px;
-    border: 1px solid #f0f0f0;
-    font-family: var(--font-inter), sans-serif;
-  }
-`;
-
-const MobileTotalRow = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 0;
-  font-weight: 600;
-  font-size: 1.2rem;
 `;
 
 const TableWrapper = styled.div`
@@ -233,9 +203,106 @@ const OutOfStockBadge = styled.div`
   margin-top: 4px;
 `;
 
+const RemoveButton = styled.button`
+  border: none;
+  background: none;
+  color: #dc2626;
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 1.2rem;
+  transition: all 0.2s;
+  border-radius: 4px;
+
+  &:hover {
+    background-color: #fee2e2;
+  }
+`;
+
+const ConfirmationModal = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+`;
+
+const ModalContent = styled.div`
+  background: white;
+  border-radius: 12px;
+  padding: 30px;
+  max-width: 400px;
+  width: 100%;
+  font-family: var(--font-inter), sans-serif;
+`;
+
+const ModalTitle = styled.h3`
+  font-family: var(--font-playfair), serif;
+  font-size: 1.5rem;
+  margin: 0 0 15px 0;
+  color: #1a1a1a;
+`;
+
+const ModalMessage = styled.p`
+  margin: 0 0 25px 0;
+  color: #666;
+  line-height: 1.5;
+`;
+
+const ModalButtons = styled.div`
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+`;
+
+const ModalButton = styled.button`
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  font-family: var(--font-inter), sans-serif;
+
+  &.cancel {
+    background-color: #f5f5f5;
+    color: #666;
+
+    &:hover {
+      background-color: #e5e5e5;
+    }
+  }
+
+  &.confirm {
+    background-color: #dc2626;
+    color: white;
+
+    &:hover {
+      background-color: #b91c1c;
+    }
+  }
+`;
+
+// ✅ NEW: Free shipping badge
+const FreeShippingBadge = styled.div`
+  background-color: #22c55e;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-block;
+`;
+
 export default function CartPage() {
   const { cartProducts, addProduct, removeProduct } = useContext(CartContext);
   const [products, setProducts] = useState([]);
+  const [confirmRemoval, setConfirmRemoval] = useState(null);
 
   useEffect(() => {
     if (cartProducts.length > 0) {
@@ -244,6 +311,10 @@ export default function CartPage() {
       axios.post('/api/cart', { ids: productIds })
         .then(response => {
           setProducts(response.data);
+        })
+        .catch(error => {
+          console.error('Failed to load cart products:', error);
+          // Keep existing products in state on error to avoid blank cart
         });
     } else {
       setProducts([]);
@@ -275,16 +346,78 @@ export default function CartPage() {
   }
 
   function lessOfThisProduct(productId, variantId) {
-    removeProduct(productId, variantId);
+    // Count how many of this item are in cart
+    const currentQuantity = cartProducts.filter(item =>
+      item.productId === productId && item.variantId === variantId
+    ).length;
+
+    // If this is the last one, show confirmation
+    if (currentQuantity === 1) {
+      const product = products.find(p => p._id === productId);
+      const brandName = product?.category?.name || '';
+      const productTitle = product?.title || '';
+      const variant = product?.variants?.find(v => v._id === variantId);
+      const fullName = brandName ? `${brandName} ${productTitle}` : productTitle;
+      const sizeInfo = variant?.size ? ` (${formatSize(variant.size)})` : '';
+
+      setConfirmRemoval({
+        productId,
+        variantId,
+        name: `${fullName}${sizeInfo}`,
+        action: 'single'
+      });
+    } else {
+      // Just remove one
+      removeProduct(productId, variantId);
+    }
   }
 
-  function formatSize(size) {
-    if (!size) return '';
-    if (typeof size === 'string' && size.toLowerCase().includes('ml')) {
-      return size;
-    }
-    return `${size} ml`;
+  function removeAllOfProduct(productId, variantId) {
+    const product = products.find(p => p._id === productId);
+    const brandName = product?.category?.name || '';
+    const productTitle = product?.title || '';
+    const variant = product?.variants?.find(v => v._id === variantId);
+    const fullName = brandName ? `${brandName} ${productTitle}` : productTitle;
+    const sizeInfo = variant?.size ? ` (${formatSize(variant.size)})` : '';
+
+    const quantity = cartProducts.filter(item =>
+      item.productId === productId && item.variantId === variantId
+    ).length;
+
+    setConfirmRemoval({
+      productId,
+      variantId,
+      name: `${fullName}${sizeInfo}`,
+      quantity,
+      action: 'all'
+    });
   }
+
+  function confirmRemoveProduct() {
+    if (!confirmRemoval) return;
+
+    const { productId, variantId, action } = confirmRemoval;
+
+    if (action === 'all') {
+      // Remove all instances
+      const itemsToRemove = cartProducts.filter(item =>
+        item.productId === productId && item.variantId === variantId
+      );
+      itemsToRemove.forEach(() => {
+        removeProduct(productId, variantId);
+      });
+    } else {
+      // Remove single instance
+      removeProduct(productId, variantId);
+    }
+
+    setConfirmRemoval(null);
+  }
+
+  function cancelRemoveProduct() {
+    setConfirmRemoval(null);
+  }
+
 
   const groupedCart = {};
   cartProducts.forEach(item => {
@@ -329,10 +462,18 @@ export default function CartPage() {
     return sizeA - sizeB;
   });
 
-  let total = 0;
+  // ✅ Calculate subtotal
+  let subtotal = 0;
   sortedGroupedCart.forEach(([, item]) => {
-    total += item.quantity * item.price;
+    subtotal += item.quantity * item.price;
   });
+
+  // ✅ Calculate shipping using helper functions
+  const shippingCost = calculateShipping(subtotal);
+  const qualifiesForFreeShipping = isFreeShipping(subtotal);
+
+  // ✅ Calculate total (subtotal + shipping)
+  const total = subtotal + shippingCost;
 
   return (
     <>
@@ -358,6 +499,7 @@ export default function CartPage() {
                         <th>Product</th>
                         <th>Quantity</th>
                         <th>Price</th>
+                        <th></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -427,14 +569,17 @@ export default function CartPage() {
                             <td>
                               ${(item.quantity * item.price).toFixed(2)}
                             </td>
+                            <td>
+                              <RemoveButton
+                                onClick={() => removeAllOfProduct(item.productId, item.variantId)}
+                                title="Remove all from cart"
+                              >
+                                🗑️
+                              </RemoveButton>
+                            </td>
                           </tr>
                         );
                       })}
-                      <TotalRow>
-                        <td></td>
-                        <td></td>
-                        <td>${total.toFixed(2)} CAD</td>
-                      </TotalRow>
                     </tbody>
                   </Table>
                 </TableWrapper>
@@ -483,23 +628,31 @@ export default function CartPage() {
                         </MobileProductDetails>
                       </MobileProductInfo>
                       <MobileActions>
-                        <div>
-                          <QuantityButton onClick={() => lessOfThisProduct(item.productId, item.variantId)}>
-                            -
-                          </QuantityButton>
-                          <QuantityLabel>
-                            {item.quantity}
-                          </QuantityLabel>
-                          <QuantityButton
-                            onClick={() => moreOfThisProduct(item.productId, item.variantId)}
-                            disabled={item.quantity >= currentStock}
-                            style={{
-                              opacity: item.quantity >= currentStock ? 0.5 : 1,
-                              cursor: item.quantity >= currentStock ? 'not-allowed' : 'pointer'
-                            }}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div>
+                            <QuantityButton onClick={() => lessOfThisProduct(item.productId, item.variantId)}>
+                              -
+                            </QuantityButton>
+                            <QuantityLabel>
+                              {item.quantity}
+                            </QuantityLabel>
+                            <QuantityButton
+                              onClick={() => moreOfThisProduct(item.productId, item.variantId)}
+                              disabled={item.quantity >= currentStock}
+                              style={{
+                                opacity: item.quantity >= currentStock ? 0.5 : 1,
+                                cursor: item.quantity >= currentStock ? 'not-allowed' : 'pointer'
+                              }}
+                            >
+                              +
+                            </QuantityButton>
+                          </div>
+                          <RemoveButton
+                            onClick={() => removeAllOfProduct(item.productId, item.variantId)}
+                            title="Remove all from cart"
                           >
-                            +
-                          </QuantityButton>
+                            🗑️
+                          </RemoveButton>
                         </div>
                         <MobilePrice>
                           ${(item.quantity * item.price).toFixed(2)}
@@ -508,13 +661,6 @@ export default function CartPage() {
                     </MobileCartItem>
                   );
                 })}
-
-                <MobileTotalSection>
-                  <MobileTotalRow>
-                    <span>Total:</span>
-                    <span>${total.toFixed(2)} CAD</span>
-                  </MobileTotalRow>
-                </MobileTotalSection>
               </>
             )}
           </WhiteBox>
@@ -534,13 +680,42 @@ export default function CartPage() {
                 paddingBottom: '20px',
                 borderBottom: '1px solid #f0f0f0'
               }}>
+                {/* ✅ Subtotal */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
                   <span>Subtotal:</span>
-                  <span style={{ fontWeight: '600' }}>${total.toFixed(2)} CAD</span>
+                  <span style={{ fontWeight: '600' }}>${subtotal.toFixed(2)}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: '#666' }}>
+                
+                {/* ✅ Shipping */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
                   <span>Shipping:</span>
-                  <span>Calculated at checkout</span>
+                  <span style={{ fontWeight: '600' }}>
+                    {qualifiesForFreeShipping ? (
+                      <FreeShippingBadge>FREE</FreeShippingBadge>
+                    ) : (
+                      `$${shippingCost.toFixed(2)}`
+                    )}
+                  </span>
+                </div>
+
+                {/* ✅ Free shipping progress */}
+                {!qualifiesForFreeShipping && (
+                  <div style={{ fontSize: '0.85rem', color: '#666', marginTop: '8px' }}>
+                    Add ${amountNeededForFreeShipping(subtotal).toFixed(2)} more for free shipping!
+                  </div>
+                )}
+                
+                {/* ✅ Total */}
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  marginTop: '15px',
+                  paddingTop: '15px',
+                  borderTop: '2px solid #1a1a1a',
+                  fontSize: '1.3rem'
+                }}>
+                  <span><strong>Total:</strong></span>
+                  <span style={{ fontWeight: '700' }}>${total.toFixed(2)} CAD</span>
                 </div>
               </div>
               <Link href="/checkout" style={{ textDecoration: 'none' }}>
@@ -552,6 +727,33 @@ export default function CartPage() {
           )}
         </ColumnsWrapper>
       </Center>
+
+      {confirmRemoval && (
+        <ConfirmationModal onClick={cancelRemoveProduct}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <ModalTitle>Remove from cart?</ModalTitle>
+            <ModalMessage>
+              {confirmRemoval.action === 'all' ? (
+                <>
+                  Are you sure you want to remove all <strong>{confirmRemoval.quantity}</strong> units of <strong>{confirmRemoval.name}</strong> from your cart?
+                </>
+              ) : (
+                <>
+                  Are you sure you want to remove <strong>{confirmRemoval.name}</strong> from your cart?
+                </>
+              )}
+            </ModalMessage>
+            <ModalButtons>
+              <ModalButton className="cancel" onClick={cancelRemoveProduct}>
+                Cancel
+              </ModalButton>
+              <ModalButton className="confirm" onClick={confirmRemoveProduct}>
+                Remove
+              </ModalButton>
+            </ModalButtons>
+          </ModalContent>
+        </ConfirmationModal>
+      )}
     </>
   );
 }

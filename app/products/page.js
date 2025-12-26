@@ -2,6 +2,19 @@ import { mongooseConnect } from "@/lib/mongoose";
 import { Product } from "@/lib/models";
 import ProductsContent from "@/components/ProductsContent";
 
+export const metadata = {
+  title: 'All Products | ScentSiphon',
+  description: 'Browse our complete collection of premium fragrances. Find your signature scent from top brands at ScentSiphon.',
+  openGraph: {
+    title: 'All Products | ScentSiphon',
+    description: 'Browse our complete collection of premium fragrances.',
+    type: 'website',
+  },
+};
+
+// Revalidate this page every 60 seconds (ISR)
+export const revalidate = 60;
+
 export default async function ProductsPage() {
   await mongooseConnect();
 
