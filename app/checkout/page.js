@@ -390,10 +390,16 @@ export default function CheckoutPage() {
   const [orderData, setOrderData] = useState(null);
   const [error, setError] = useState(null);
 
-  // Redirect to cart if empty
+  // Redirect to cart if empty (but NOT if we're on the success page)
   useEffect(() => {
-    if (typeof window !== 'undefined' && cartProducts.length === 0 && !isSuccess) {
-      window.location.href = '/cart';
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const hasSuccessParam = urlParams.get('success') === '1';
+
+      // Only redirect if cart is empty AND we're not on the success page
+      if (cartProducts.length === 0 && !isSuccess && !hasSuccessParam) {
+        window.location.href = '/cart';
+      }
     }
   }, [cartProducts, isSuccess]);
 

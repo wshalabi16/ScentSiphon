@@ -310,6 +310,8 @@ export async function POST(req) {
       metadata: { orderId: orderDoc._id.toString() },
     });
 
+    console.log('✅ Stripe session created with success_url:', process.env.PUBLIC_URL + '/checkout?success=1');
+
     return NextResponse.json({ url: session.url }, {
       headers: {
         'X-RateLimit-Limit': rateLimitResult.limit.toString(),
