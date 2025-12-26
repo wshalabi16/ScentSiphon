@@ -299,8 +299,37 @@ const FreeShippingBadge = styled.div`
   display: inline-block;
 `;
 
+const LoadingSkeleton = styled.div`
+  padding: 30px 0;
+`;
+
+const SkeletonItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0;
+  border-bottom: 1px solid #f0f0f0;
+  animation: pulse 1.5s ease-in-out infinite;
+
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+`;
+
+const SkeletonBox = styled.div`
+  background-color: #f0f0f0;
+  border-radius: ${props => props.$radius || '8px'};
+  width: ${props => props.$width || '100px'};
+  height: ${props => props.$height || '20px'};
+`;
+
 export default function CartPage() {
-  const { cartProducts, addProduct, removeProduct } = useContext(CartContext);
+  const { cartProducts, addProduct, removeProduct, cartLoaded } = useContext(CartContext);
   const [products, setProducts] = useState([]);
   const [confirmRemoval, setConfirmRemoval] = useState(null);
 
@@ -483,7 +512,22 @@ export default function CartPage() {
           <WhiteBox>
             <CartTitle>Cart</CartTitle>
 
-            {!cartProducts?.length && (
+            {!cartLoaded && (
+              <LoadingSkeleton>
+                {[1, 2, 3].map((i) => (
+                  <SkeletonItem key={i}>
+                    <SkeletonBox $width="80px" $height="80px" />
+                    <div style={{ flex: 1 }}>
+                      <SkeletonBox $width="150px" $height="16px" style={{ marginBottom: '8px' }} />
+                      <SkeletonBox $width="100px" $height="14px" />
+                    </div>
+                    <SkeletonBox $width="60px" $height="20px" />
+                  </SkeletonItem>
+                ))}
+              </LoadingSkeleton>
+            )}
+
+            {cartLoaded && !cartProducts?.length && (
               <EmptyCart>
                 <h2>Your cart is empty</h2>
                 <p>Add some products to get started</p>

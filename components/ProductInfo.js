@@ -113,9 +113,59 @@ const PriceDisplay = styled.div`
   margin-bottom: 30px;
 `;
 
+const QuantitySelector = styled.div`
+  margin-bottom: 20px;
+`;
+
+const QuantityLabel = styled.div`
+  font-weight: 500;
+  margin-bottom: 12px;
+  color: #1a1a1a;
+`;
+
+const QuantityControls = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+`;
+
+const QuantityButton = styled.button`
+  width: 40px;
+  height: 40px;
+  border: 2px solid #e5e5e5;
+  background-color: white;
+  color: #1a1a1a;
+  border-radius: 8px;
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
+  font-family: var(--font-inter), sans-serif;
+  font-weight: 600;
+  font-size: 1.2rem;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: ${props => props.disabled ? 0.4 : 1};
+
+  &:hover {
+    border-color: ${props => !props.disabled && '#1a1a1a'};
+    background-color: ${props => !props.disabled && '#f5f5f5'};
+  }
+`;
+
+const QuantityDisplay = styled.div`
+  min-width: 60px;
+  text-align: center;
+  font-weight: 500;
+  font-size: 1.1rem;
+  color: #1a1a1a;
+`;
+
 const AddToCartButton = styled.button`
   width: 100%;
-  background-color: ${props => props.disabled ? '#9ca3af' : '#1a1a1a'};
+  background-color: ${props =>
+    props.$success ? '#16a34a' :
+    props.disabled ? '#9ca3af' : '#1a1a1a'
+  };
   color: white;
   border: none;
   border-radius: 8px;
@@ -123,22 +173,15 @@ const AddToCartButton = styled.button`
   font-size: 1rem;
   font-weight: 600;
   cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
-  transition: all 0.2s;
+  transition: all 0.3s ease;
   font-family: var(--font-inter), sans-serif;
-  
-  &:hover {
-    background-color: ${props => props.disabled ? '#9ca3af' : '#000'};
-  }
-`;
 
-const SuccessMessage = styled.div`
-  margin-top: 15px;
-  padding: 12px;
-  background-color: #dcfce7;
-  color: #16a34a;
-  border-radius: 8px;
-  font-weight: 500;
-  text-align: center;
+  &:hover {
+    background-color: ${props =>
+      props.$success ? '#16a34a' :
+      props.disabled ? '#9ca3af' : '#000'
+    };
+  }
 `;
 
 export default function ProductInfo({ product }) {
@@ -147,6 +190,7 @@ export default function ProductInfo({ product }) {
   // Select first available variant (with stock > 0), or first variant if all out
   const firstAvailableVariant = product.variants?.find(v => v.stock > 0) || product.variants?.[0];
   const [selectedVariant, setSelectedVariant] = useState(firstAvailableVariant || null);
+  const [quantity, setQuantity] = useState(1);
   const [showSuccess, setShowSuccess] = useState(false);
   const successTimeoutRef = useRef(null);
 
@@ -159,6 +203,10 @@ export default function ProductInfo({ product }) {
     };
   }, []);
 
+  // Reset quantity when variant changes
+  useEffect(() => {
+    setQuantity(1);
+  }, [selectedVariant]);
 
   function handleVariantChange(variant) {
     // Don't allow selecting out of stock variants
@@ -173,10 +221,23 @@ export default function ProductInfo({ product }) {
     }
   }
 
+  function handleQuantityChange(delta) {
+    const newQuantity = quantity + delta;
+    const maxStock = selectedVariant?.stock || 0;
+
+    if (newQuantity >= 1 && newQuantity <= maxStock) {
+      setQuantity(newQuantity);
+    }
+  }
+
   function handleAddToCart() {
     if (!selectedVariant || selectedVariant.stock === 0) return;
 
-    addProduct(product._id, selectedVariant);
+    // Add the product multiple times based on quantity
+    for (let i = 0; i < quantity; i++) {
+      addProduct(product._id, selectedVariant);
+    }
+
     setShowSuccess(true);
 
     // Clear any existing timeout
@@ -243,17 +304,42 @@ export default function ProductInfo({ product }) {
       {selectedVariant ? (
         <>
           <PriceDisplay>${selectedVariant.price} CAD</PriceDisplay>
+
+          {!isOutOfStock && (
+            <QuantitySelector>
+              <QuantityLabel>Quantity</QuantityLabel>
+              <QuantityControls>
+                <QuantityButton
+                  onClick={() => handleQuantityChange(-1)}
+                  disabled={quantity <= 1}
+                  aria-label="Decrease quantity"
+                >
+                  −
+                </QuantityButton>
+                <QuantityDisplay>{quantity}</QuantityDisplay>
+                <QuantityButton
+                  onClick={() => handleQuantityChange(1)}
+                  disabled={quantity >= selectedVariant.stock}
+                  aria-label="Increase quantity"
+                >
+                  +
+                </QuantityButton>
+              </QuantityControls>
+            </QuantitySelector>
+          )}
+
           <AddToCartButton
             onClick={handleAddToCart}
             disabled={isOutOfStock}
+            $success={showSuccess}
           >
-            {isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
+            {showSuccess
+              ? `✓ Added ${quantity > 1 ? `${quantity}x ` : ''}to Cart!`
+              : isOutOfStock
+                ? 'Out of Stock'
+                : 'Add to Cart'
+            }
           </AddToCartButton>
-          {showSuccess && !isOutOfStock && (
-            <SuccessMessage>
-              ✓ Added {fullName} {formatSize(selectedVariant.size)} to cart!
-            </SuccessMessage>
-          )}
         </>
       ) : (
         <PriceDisplay>

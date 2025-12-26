@@ -104,7 +104,8 @@ export function CartContextProvider({ children }) {
       setCartProducts,
       addProduct,
       removeProduct,
-      clearCart
+      clearCart,
+      cartLoaded
     }}>
       {children}
     </CartContext.Provider>
