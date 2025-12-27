@@ -50,7 +50,7 @@ export function CartContextProvider({ children }) {
 
   function addProduct(productId, variant) {
     // Validate required variant properties
-    if (!variant || !variant.size || variant.price === undefined || variant.price === null) {
+    if (!variant || !variant._id || !variant.size || variant.price === undefined || variant.price === null) {
       console.error('Invalid variant data:', { productId, variant });
       return;
     }
@@ -69,7 +69,7 @@ export function CartContextProvider({ children }) {
     addProductTimeoutRef.current = setTimeout(() => {
       setCartProducts(prev => [...prev, {
         productId,
-        variantId: variant._id || variant.size,
+        variantId: variant._id,
         size: variant.size,
         price: variant.price
       }]);
