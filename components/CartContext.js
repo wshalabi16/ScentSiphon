@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useState, useEffect, useRef } from "react";
+import { createContext, useState, useEffect } from "react";
 
 export const CartContext = createContext({});
 
@@ -7,7 +7,6 @@ export function CartContextProvider({ children }) {
   const ls = typeof window !== "undefined" ? window.localStorage : null;
   const [cartProducts, setCartProducts] = useState([]);
   const [cartLoaded, setCartLoaded] = useState(false);
-  const addProductTimeoutRef = useRef(null);
 
   // Load cart from localStorage on mount (runs once)
   useEffect(() => {
@@ -61,20 +60,12 @@ export function CartContextProvider({ children }) {
       return;
     }
 
-    // Debounce to prevent double-click issues
-    if (addProductTimeoutRef.current) {
-      clearTimeout(addProductTimeoutRef.current);
-    }
-
-    addProductTimeoutRef.current = setTimeout(() => {
-      setCartProducts(prev => [...prev, {
-        productId,
-        variantId: variant._id,
-        size: variant.size,
-        price: variant.price
-      }]);
-      addProductTimeoutRef.current = null;
-    }, 300); // 300ms debounce
+    setCartProducts(prev => [...prev, {
+      productId,
+      variantId: variant._id,
+      size: variant.size,
+      price: variant.price
+    }]);
   }
 
   function removeProduct(productId, variantId) {

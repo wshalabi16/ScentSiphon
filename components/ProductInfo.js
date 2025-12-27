@@ -192,6 +192,7 @@ export default function ProductInfo({ product }) {
   const [selectedVariant, setSelectedVariant] = useState(firstAvailableVariant || null);
   const [quantity, setQuantity] = useState(1);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
   const successTimeoutRef = useRef(null);
 
   // Cleanup timeout on unmount
@@ -231,7 +232,9 @@ export default function ProductInfo({ product }) {
   }
 
   function handleAddToCart() {
-    if (!selectedVariant || selectedVariant.stock === 0) return;
+    if (!selectedVariant || selectedVariant.stock === 0 || isAdding) return;
+
+    setIsAdding(true);
 
     // Add the product multiple times based on quantity
     for (let i = 0; i < quantity; i++) {
@@ -248,6 +251,7 @@ export default function ProductInfo({ product }) {
     // Set new timeout and store reference
     successTimeoutRef.current = setTimeout(() => {
       setShowSuccess(false);
+      setIsAdding(false);
       successTimeoutRef.current = null;
     }, 2000);
   }
@@ -330,7 +334,7 @@ export default function ProductInfo({ product }) {
 
           <AddToCartButton
             onClick={handleAddToCart}
-            disabled={isOutOfStock}
+            disabled={isOutOfStock || isAdding}
             $success={showSuccess}
           >
             {showSuccess
