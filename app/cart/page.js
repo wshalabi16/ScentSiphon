@@ -184,6 +184,18 @@ const CheckoutButton = styled.button`
   }
 `;
 
+const StockIssueWarning = styled.div`
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.9rem;
+  color: #991b1b;
+  line-height: 1.5;
+`;
+
 const StockWarning = styled.div`
   font-size: 0.8rem;
   color: ${props => props.$severity === 'critical' ? '#dc2626' : '#f59e0b'};
@@ -504,6 +516,15 @@ export default function CartPage() {
   // ✅ Calculate total (subtotal + shipping)
   const total = subtotal + shippingCost;
 
+  // ✅ Check for stock issues
+  const hasStockIssues = sortedGroupedCart.some(([, item]) => {
+    const product = products.find(p => p._id === item.productId);
+    if (!product) return false;
+    const variant = product.variants?.find(v => v._id === item.variantId);
+    const currentStock = variant?.stock || 0;
+    return currentStock === 0 || currentStock < item.quantity;
+  });
+
   return (
     <>
       <Header />
@@ -762,11 +783,24 @@ export default function CartPage() {
                   <span style={{ fontWeight: '700' }}>${total.toFixed(2)} CAD</span>
                 </div>
               </div>
-              <Link href="/checkout" style={{ textDecoration: 'none' }}>
-                <CheckoutButton>
+              {hasStockIssues && (
+                <StockIssueWarning>
+                  <strong>Cannot proceed to checkout</strong>
+                  <br />
+                  Some items in your cart are out of stock or exceed available quantity. Please adjust your cart to continue.
+                </StockIssueWarning>
+              )}
+              {hasStockIssues ? (
+                <CheckoutButton disabled style={{ opacity: 0.5, cursor: 'not-allowed' }}>
                   Proceed to Checkout
                 </CheckoutButton>
-              </Link>
+              ) : (
+                <Link href="/checkout" style={{ textDecoration: 'none' }}>
+                  <CheckoutButton>
+                    Proceed to Checkout
+                  </CheckoutButton>
+                </Link>
+              )}
             </WhiteBox>
           )}
         </ColumnsWrapper>
